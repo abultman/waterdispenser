@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Water Dispenser Control</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>💧 Water Dispenser</h1>
+            <div class="status">
+                <span id="wifiStatus">Connecting...</span>
+                <span id="stateStatus" class="status-badge status-idle">IDLE</span>
+            </div>
+        </div>
+
+        <div class="content">
+            <!-- Main Control Section -->
+            <div class="section" id="mainSection">
+                <h2>Quick Dispense</h2>
+                <div class="preset-grid">
+                    <button class="btn btn-primary" onclick="startDispensing(100)">100 ml</button>
+                    <button class="btn btn-primary" onclick="startDispensing(250)">250 ml</button>
+                    <button class="btn btn-primary" onclick="startDispensing(500)">500 ml</button>
+                    <button class="btn btn-primary" onclick="startDispensing(1000)">1000 ml</button>
+                </div>
+
+                <h2>Custom Amount</h2>
+                <div class="input-group">
+                    <input type="number" id="customAmount" placeholder="Enter amount" min="0.001" step="any">
+                    <button class="btn btn-success" onclick="startCustomAmount()">Start</button>
+                </div>
+                <p class="info-text" id="unitHint">Enter amount in milliliters</p>
+            </div>
+
+            <!-- Dispensing Section -->
+            <div class="section hidden" id="dispensingSection">
+                <h2>Dispensing Progress</h2>
+                <div class="dispensing-info">
+                    <div class="info-card">
+                        <h3>Dispensed</h3>
+                        <div class="value" id="dispensedAmount">0 ml</div>
+                    </div>
+                    <div class="info-card">
+                        <h3>Target</h3>
+                        <div class="value" id="targetAmount">0 ml</div>
+                    </div>
+                    <div class="info-card">
+                        <h3>Remaining</h3>
+                        <div class="value" id="remainingAmount">0 ml</div>
+                    </div>
+                </div>
+
+                <div class="progress-container">
+                    <div class="progress-bar" id="progressBar" style="width: 0%">0%</div>
+                </div>
+
+                <div id="controlsDispensing">
+                    <button class="btn btn-warning btn-block" onclick="pauseDispensing()">PAUSE</button>
+                </div>
+
+                <div id="controlsPaused" class="controls-paused hidden">
+                    <button class="btn btn-success" onclick="resumeDispensing()">RESUME</button>
+                    <button class="btn btn-danger" onclick="stopDispensing()">STOP</button>
+                </div>
+            </div>
+
+            <!-- Navigation Section -->
+            <div class="section">
+                <a href="/config.html" class="btn btn-secondary btn-block">
+                    ⚙️ Configuration
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configuration - Water Dispenser</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>⚙️ Configuration</h1>
+            <div class="status">
+                <span id="wifiStatus">Loading...</span>
+            </div>
+        </div>
+
+        <div class="content">
+            <!-- WiFi Configuration Section -->
+            <div class="section">
+                <h2>WiFi Configuration</h2>
+
+                <div class="info-box">
+                    <div class="info-row">
+                        <span class="info-label">Status:</span>
+                        <span id="wifiConnectedStatus" class="info-value">Checking...</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Network:</span>
+                        <span id="currentSsid" class="info-value">-</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">IP Address:</span>
+                        <span id="currentIp" class="info-value">-</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Signal:</span>
+                        <span id="signalStrength" class="info-value">-</span>
+                    </div>
+                </div>
+
+                <h3 class="subsection-title">Change Network</h3>
+                <div class="input-group">
+                    <input type="text" id="wifiSsid" placeholder="WiFi SSID">
+                </div>
+                <div class="input-group">
+                    <input type="password" id="wifiPassword" placeholder="WiFi Password">
+                </div>
+                <button class="btn btn-primary btn-block" onclick="configureWiFi()">
+                    Connect to Network
+                </button>
+            </div>
+
+            <!-- Flow Sensor Calibration Section -->
+            <div class="section">
+                <h2>Flow Sensor Calibration</h2>
+
+                <div class="info-box">
+                    <div class="info-row">
+                        <span class="info-label">Current Calibration:</span>
+                        <span id="currentCalibration" class="info-value calibration-value">450.00 pulses/L</span>
+                    </div>
+                </div>
+
+                <h3 class="subsection-title">Calibration Instructions</h3>
+                <div class="calibration-instructions">
+                    <ol>
+                        <li>Prepare a container with a known volume (e.g., 1000ml)</li>
+                        <li>Dispense water and measure the actual amount</li>
+                        <li>Calculate: <code>New Value = Current × (Target / Actual)</code></li>
+                        <li>Enter the new calibration value below</li>
+                        <li>Test with a small amount to verify accuracy</li>
+                    </ol>
+                </div>
+
+                <h3 class="subsection-title">Update Calibration</h3>
+                <div class="input-group">
+                    <input type="number" id="calibrationFactor" placeholder="Pulses per liter" step="0.01" min="0">
+                    <button class="btn btn-primary" onclick="saveCalibration()">Save</button>
+                </div>
+
+                <div class="calibration-example">
+                    <strong>Example:</strong> If you dispensed 1000ml but only got 950ml,
+                    and current calibration is 450 pulses/L, the new value should be:
+                    <code>450 × (1000 / 950) = 473.68 pulses/L</code>
+                </div>
+            </div>
+
+            <!-- Display Preferences Section -->
+            <div class="section">
+                <h2>Display Preferences</h2>
+
+                <h3 class="subsection-title">Volume Unit</h3>
+                <div class="toggle-group">
+                    <label class="toggle-option">
+                        <input type="radio" name="volumeUnit" value="ml" checked onclick="setVolumeUnit('ml')">
+                        <span class="toggle-label">Milliliters (ml)</span>
+                    </label>
+                    <label class="toggle-option">
+                        <input type="radio" name="volumeUnit" value="l" onclick="setVolumeUnit('l')">
+                        <span class="toggle-label">Liters (L)</span>
+                    </label>
+                </div>
+                <p class="info-text">Choose how volumes are displayed on the main page</p>
+            </div>
+
+            <!-- System Information Section -->
+            <div class="section">
+                <h2>System Information</h2>
+
+                <div class="info-box">
+                    <div class="info-row">
+                        <span class="info-label">Device:</span>
+                        <span class="info-value">ESP32-8048S043</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Firmware:</span>
+                        <span class="info-value">Water Dispenser v1.0</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Display:</span>
+                        <span class="info-value">800×480 ILI9485</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Navigation -->
+            <div class="section">
+                <a href="/" class="btn btn-secondary btn-block">
+                    ← Back to Main
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+    <script>
+        // Configuration page specific initialization
+        if (typeof initConfigPage === 'function') {
+            initConfigPage();
+        }
+    </script>
+</body>
+</html>

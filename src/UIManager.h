@@ -54,12 +54,18 @@ private:
     lv_obj_t* _btn_stop;
 
     // Config screen elements
+    lv_obj_t* _config_scroll_container;
     lv_obj_t* _textarea_ssid;
     lv_obj_t* _textarea_password;
+    lv_obj_t* _textarea_hostname;
+    lv_obj_t* _textarea_pulses_per_liter;
+    lv_obj_t* _btn_wifi_scan;
     lv_obj_t* _btn_wifi_connect;
     lv_obj_t* _btn_calibrate;
     lv_obj_t* _btn_config_back;
     lv_obj_t* _label_wifi_status;
+    lv_obj_t* _keyboard_config;
+    lv_obj_t* _dropdown_ssid;
 
     // Calibration screen elements
     lv_obj_t* _label_calib_instructions;
@@ -82,6 +88,7 @@ private:
     static void dispensingEventHandler(lv_event_t* e);
     static void configEventHandler(lv_event_t* e);
     static void calibrationEventHandler(lv_event_t* e);
+    static void textareaEventHandler(lv_event_t* e);
 
     // Helper methods
     void updateDispensingScreen();

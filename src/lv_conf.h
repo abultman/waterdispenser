@@ -37,6 +37,6 @@
 #define LV_USE_ARC 1
 
 #define LV_TICK_CUSTOM 1
-#define LV_DISP_DEF_REFR_PERIOD 50
+#define LV_DISP_DEF_REFR_PERIOD 30
 
 #endif

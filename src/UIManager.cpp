@@ -3,6 +3,7 @@
 #include "config.h"
 #include <WiFi.h>
 #include <Preferences.h>
+#include <ESPmDNS.h>
 
 // Global instance
 UIManager uiManager;
@@ -434,81 +435,173 @@ void UIManager::createConfigScreen() {
     _screen_config = lv_obj_create(NULL);
     lv_obj_set_style_bg_color(_screen_config, lv_color_hex(0x2C3E50), 0);
 
-    // Title
+    // Title (fixed at top)
     lv_obj_t* title = lv_label_create(_screen_config);
     lv_label_set_text(title, "Settings");
     lv_obj_set_style_text_font(title, &lv_font_montserrat_24, 0);
     lv_obj_set_style_text_color(title, lv_color_white(), 0);
-    lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 20);
+    lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 10);
 
-    // WiFi SSID
-    lv_obj_t* label_ssid = lv_label_create(_screen_config);
-    lv_label_set_text(label_ssid, "WiFi SSID:");
-    lv_obj_set_style_text_color(label_ssid, lv_color_white(), 0);
-    lv_obj_align(label_ssid, LV_ALIGN_TOP_LEFT, 50, 80);
-
-    _textarea_ssid = lv_textarea_create(_screen_config);
-    lv_obj_set_size(_textarea_ssid, 500, 50);
-    lv_obj_align(_textarea_ssid, LV_ALIGN_TOP_LEFT, 50, 110);
-    lv_textarea_set_one_line(_textarea_ssid, true);
-
-    // WiFi Password
-    lv_obj_t* label_password = lv_label_create(_screen_config);
-    lv_label_set_text(label_password, "WiFi Password:");
-    lv_obj_set_style_text_color(label_password, lv_color_white(), 0);
-    lv_obj_align(label_password, LV_ALIGN_TOP_LEFT, 50, 180);
-
-    _textarea_password = lv_textarea_create(_screen_config);
-    lv_obj_set_size(_textarea_password, 500, 50);
-    lv_obj_align(_textarea_password, LV_ALIGN_TOP_LEFT, 50, 210);
-    lv_textarea_set_one_line(_textarea_password, true);
-    lv_textarea_set_password_mode(_textarea_password, true);
-
-    // WiFi status label
-    _label_wifi_status = lv_label_create(_screen_config);
-    lv_label_set_text(_label_wifi_status, "Not connected");
-    lv_obj_set_style_text_color(_label_wifi_status, lv_color_hex(0x95A5A6), 0);
-    lv_obj_align(_label_wifi_status, LV_ALIGN_TOP_LEFT, 50, 280);
-
-    // Connect button
-    _btn_wifi_connect = lv_btn_create(_screen_config);
-    lv_obj_set_size(_btn_wifi_connect, 200, 50);
-    lv_obj_align(_btn_wifi_connect, LV_ALIGN_TOP_RIGHT, -50, 280);
-    lv_obj_set_style_bg_color(_btn_wifi_connect, lv_color_hex(0x27AE60), 0);
-    lv_obj_add_event_cb(_btn_wifi_connect, configEventHandler, LV_EVENT_CLICKED, (void*)1);
-    lv_obj_t* label_connect = lv_label_create(_btn_wifi_connect);
-    lv_label_set_text(label_connect, "Connect");
-    lv_obj_center(label_connect);
-
-    // Calibration button
-    _btn_calibrate = lv_btn_create(_screen_config);
-    lv_obj_set_size(_btn_calibrate, 300, 60);
-    lv_obj_align(_btn_calibrate, LV_ALIGN_CENTER, 0, 50);
-    lv_obj_set_style_bg_color(_btn_calibrate, lv_color_hex(0x3498DB), 0);
-    lv_obj_add_event_cb(_btn_calibrate, configEventHandler, LV_EVENT_CLICKED, (void*)2);
-    lv_obj_t* label_calibrate = lv_label_create(_btn_calibrate);
-    lv_label_set_text(label_calibrate, "Calibrate Flow Sensor");
-    lv_obj_center(label_calibrate);
-
-    // Back button
+    // Back button (fixed at bottom)
     _btn_config_back = lv_btn_create(_screen_config);
-    lv_obj_set_size(_btn_config_back, 200, 60);
-    lv_obj_align(_btn_config_back, LV_ALIGN_BOTTOM_MID, 0, -20);
+    lv_obj_set_size(_btn_config_back, 150, 50);
+    lv_obj_align(_btn_config_back, LV_ALIGN_BOTTOM_MID, 0, -10);
     lv_obj_set_style_bg_color(_btn_config_back, lv_color_hex(0x7F8C8D), 0);
     lv_obj_add_event_cb(_btn_config_back, configEventHandler, LV_EVENT_CLICKED, (void*)0);
     lv_obj_t* label_back = lv_label_create(_btn_config_back);
     lv_label_set_text(label_back, "Back");
     lv_obj_center(label_back);
 
-    // Load saved WiFi credentials
+    // Scrollable container for content
+    _config_scroll_container = lv_obj_create(_screen_config);
+    lv_obj_set_size(_config_scroll_container, SCREEN_WIDTH - 20, SCREEN_HEIGHT - 130);
+    lv_obj_align(_config_scroll_container, LV_ALIGN_TOP_MID, 0, 50);
+    lv_obj_set_style_bg_color(_config_scroll_container, lv_color_hex(0x34495E), 0);
+    lv_obj_set_flex_flow(_config_scroll_container, LV_FLEX_FLOW_COLUMN);
+    lv_obj_set_flex_align(_config_scroll_container, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START);
+    lv_obj_set_style_pad_all(_config_scroll_container, 15, 0);
+    lv_obj_set_style_pad_row(_config_scroll_container, 10, 0);
+
+    int y_pos = 0;
+
+    // ========== WiFi Section ==========
+    lv_obj_t* wifi_section_title = lv_label_create(_config_scroll_container);
+    lv_label_set_text(wifi_section_title, "WiFi Configuration");
+    lv_obj_set_style_text_font(wifi_section_title, &lv_font_montserrat_20, 0);
+    lv_obj_set_style_text_color(wifi_section_title, lv_color_hex(0x3498DB), 0);
+
+    // WiFi SSID label and field
+    lv_obj_t* label_ssid = lv_label_create(_config_scroll_container);
+    lv_label_set_text(label_ssid, "WiFi SSID:");
+    lv_obj_set_style_text_color(label_ssid, lv_color_white(), 0);
+
+    _textarea_ssid = lv_textarea_create(_config_scroll_container);
+    lv_obj_set_width(_textarea_ssid, SCREEN_WIDTH - 80);
+    lv_obj_set_height(_textarea_ssid, 50);
+    lv_textarea_set_one_line(_textarea_ssid, true);
+    lv_obj_add_event_cb(_textarea_ssid, textareaEventHandler, LV_EVENT_FOCUSED, NULL);
+    lv_obj_add_event_cb(_textarea_ssid, textareaEventHandler, LV_EVENT_DEFOCUSED, NULL);
+
+    // Scan button
+    _btn_wifi_scan = lv_btn_create(_config_scroll_container);
+    lv_obj_set_size(_btn_wifi_scan, 200, 45);
+    lv_obj_set_style_bg_color(_btn_wifi_scan, lv_color_hex(0x3498DB), 0);
+    lv_obj_add_event_cb(_btn_wifi_scan, configEventHandler, LV_EVENT_CLICKED, (void*)3);
+    lv_obj_t* label_scan = lv_label_create(_btn_wifi_scan);
+    lv_label_set_text(label_scan, "Scan Networks");
+    lv_obj_center(label_scan);
+
+    // Dropdown for scanned SSIDs (initially hidden)
+    _dropdown_ssid = lv_dropdown_create(_config_scroll_container);
+    lv_obj_set_width(_dropdown_ssid, SCREEN_WIDTH - 80);
+    lv_dropdown_set_options(_dropdown_ssid, "");
+    lv_obj_add_flag(_dropdown_ssid, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_event_cb(_dropdown_ssid, configEventHandler, LV_EVENT_VALUE_CHANGED, (void*)4);
+
+    // WiFi Password label and field
+    lv_obj_t* label_password = lv_label_create(_config_scroll_container);
+    lv_label_set_text(label_password, "WiFi Password:");
+    lv_obj_set_style_text_color(label_password, lv_color_white(), 0);
+
+    _textarea_password = lv_textarea_create(_config_scroll_container);
+    lv_obj_set_width(_textarea_password, SCREEN_WIDTH - 80);
+    lv_obj_set_height(_textarea_password, 50);
+    lv_textarea_set_one_line(_textarea_password, true);
+    lv_textarea_set_password_mode(_textarea_password, true);
+    lv_obj_add_event_cb(_textarea_password, textareaEventHandler, LV_EVENT_FOCUSED, NULL);
+    lv_obj_add_event_cb(_textarea_password, textareaEventHandler, LV_EVENT_DEFOCUSED, NULL);
+
+    // Connect button and status
+    lv_obj_t* connect_container = lv_obj_create(_config_scroll_container);
+    lv_obj_set_size(connect_container, SCREEN_WIDTH - 80, 60);
+    lv_obj_set_style_bg_opa(connect_container, LV_OPA_0, 0);
+    lv_obj_set_style_border_width(connect_container, 0, 0);
+    lv_obj_set_style_pad_all(connect_container, 0, 0);
+
+    _btn_wifi_connect = lv_btn_create(connect_container);
+    lv_obj_set_size(_btn_wifi_connect, 150, 50);
+    lv_obj_align(_btn_wifi_connect, LV_ALIGN_LEFT_MID, 0, 0);
+    lv_obj_set_style_bg_color(_btn_wifi_connect, lv_color_hex(0x27AE60), 0);
+    lv_obj_add_event_cb(_btn_wifi_connect, configEventHandler, LV_EVENT_CLICKED, (void*)1);
+    lv_obj_t* label_connect = lv_label_create(_btn_wifi_connect);
+    lv_label_set_text(label_connect, "Connect");
+    lv_obj_center(label_connect);
+
+    _label_wifi_status = lv_label_create(connect_container);
+    lv_label_set_text(_label_wifi_status, "Not connected");
+    lv_obj_set_style_text_color(_label_wifi_status, lv_color_hex(0x95A5A6), 0);
+    lv_obj_align(_label_wifi_status, LV_ALIGN_RIGHT_MID, 0, 0);
+    lv_label_set_long_mode(_label_wifi_status, LV_LABEL_LONG_SCROLL_CIRCULAR);
+    lv_obj_set_width(_label_wifi_status, 450);
+
+    // ========== Hostname Section ==========
+    lv_obj_t* hostname_section_title = lv_label_create(_config_scroll_container);
+    lv_label_set_text(hostname_section_title, "Network Hostname");
+    lv_obj_set_style_text_font(hostname_section_title, &lv_font_montserrat_20, 0);
+    lv_obj_set_style_text_color(hostname_section_title, lv_color_hex(0x3498DB), 0);
+    lv_obj_set_style_pad_top(hostname_section_title, 20, 0);
+
+    lv_obj_t* label_hostname = lv_label_create(_config_scroll_container);
+    lv_label_set_text(label_hostname, "mDNS Hostname (device.local):");
+    lv_obj_set_style_text_color(label_hostname, lv_color_white(), 0);
+
+    _textarea_hostname = lv_textarea_create(_config_scroll_container);
+    lv_obj_set_width(_textarea_hostname, SCREEN_WIDTH - 80);
+    lv_obj_set_height(_textarea_hostname, 50);
+    lv_textarea_set_one_line(_textarea_hostname, true);
+    lv_textarea_set_placeholder_text(_textarea_hostname, "waterdispenser");
+    lv_obj_add_event_cb(_textarea_hostname, textareaEventHandler, LV_EVENT_FOCUSED, NULL);
+    lv_obj_add_event_cb(_textarea_hostname, textareaEventHandler, LV_EVENT_DEFOCUSED, NULL);
+
+    // ========== Calibration Section ==========
+    lv_obj_t* calib_section_title = lv_label_create(_config_scroll_container);
+    lv_label_set_text(calib_section_title, "Flow Sensor Calibration");
+    lv_obj_set_style_text_font(calib_section_title, &lv_font_montserrat_20, 0);
+    lv_obj_set_style_text_color(calib_section_title, lv_color_hex(0x3498DB), 0);
+    lv_obj_set_style_pad_top(calib_section_title, 20, 0);
+
+    lv_obj_t* label_pulses = lv_label_create(_config_scroll_container);
+    lv_label_set_text(label_pulses, "Pulses per Liter:");
+    lv_obj_set_style_text_color(label_pulses, lv_color_white(), 0);
+
+    _textarea_pulses_per_liter = lv_textarea_create(_config_scroll_container);
+    lv_obj_set_width(_textarea_pulses_per_liter, SCREEN_WIDTH - 80);
+    lv_obj_set_height(_textarea_pulses_per_liter, 50);
+    lv_textarea_set_one_line(_textarea_pulses_per_liter, true);
+    lv_obj_add_event_cb(_textarea_pulses_per_liter, textareaEventHandler, LV_EVENT_FOCUSED, NULL);
+    lv_obj_add_event_cb(_textarea_pulses_per_liter, textareaEventHandler, LV_EVENT_DEFOCUSED, NULL);
+
+    _btn_calibrate = lv_btn_create(_config_scroll_container);
+    lv_obj_set_size(_btn_calibrate, 250, 50);
+    lv_obj_set_style_bg_color(_btn_calibrate, lv_color_hex(0xE67E22), 0);
+    lv_obj_add_event_cb(_btn_calibrate, configEventHandler, LV_EVENT_CLICKED, (void*)2);
+    lv_obj_t* label_calibrate = lv_label_create(_btn_calibrate);
+    lv_label_set_text(label_calibrate, "Run Calibration");
+    lv_obj_center(label_calibrate);
+
+    // Create keyboard (initially hidden, on main screen not scroll container)
+    _keyboard_config = lv_keyboard_create(_screen_config);
+    lv_obj_set_size(_keyboard_config, SCREEN_WIDTH, 200);
+    lv_obj_align(_keyboard_config, LV_ALIGN_BOTTOM_MID, 0, 0);
+    lv_obj_add_flag(_keyboard_config, LV_OBJ_FLAG_HIDDEN);
+
+    // Load saved settings
     Preferences prefs;
     if (prefs.begin(PREFS_NAMESPACE, true)) {
         String ssid = prefs.getString("wifi_ssid", "");
         String password = prefs.getString("wifi_pass", "");
+        String hostname = prefs.getString("mdns_hostname", DEFAULT_MDNS_HOSTNAME);
+        float pulsesPerLiter = prefs.getFloat("pulses_per_l", DEFAULT_PULSES_PER_LITER);
+
         if (ssid.length() > 0) {
             lv_textarea_set_text(_textarea_ssid, ssid.c_str());
             lv_textarea_set_text(_textarea_password, password.c_str());
         }
+        lv_textarea_set_text(_textarea_hostname, hostname.c_str());
+
+        char pulsesStr[16];
+        snprintf(pulsesStr, sizeof(pulsesStr), "%.2f", pulsesPerLiter);
+        lv_textarea_set_text(_textarea_pulses_per_liter, pulsesStr);
         prefs.end();
     }
 }
@@ -517,14 +610,26 @@ void UIManager::configEventHandler(lv_event_t* e) {
     int action = (int)lv_event_get_user_data(e);
 
     if (action == 0) {
-        // Back
+        // Back - save pulses per liter before leaving
+        const char* pulsesText = lv_textarea_get_text(uiManager._textarea_pulses_per_liter);
+        float pulsesPerLiter = atof(pulsesText);
+        if (pulsesPerLiter > 0) {
+            Preferences prefs;
+            if (prefs.begin(PREFS_NAMESPACE, false)) {
+                prefs.putFloat("pulses_per_l", pulsesPerLiter);
+                prefs.end();
+            }
+            hardwareControl.setCalibrationFactor(pulsesPerLiter);
+        }
         uiManager.showScreen(SCREEN_MAIN);
     } else if (action == 1) {
         // WiFi Connect
         const char* ssid = lv_textarea_get_text(uiManager._textarea_ssid);
         const char* password = lv_textarea_get_text(uiManager._textarea_password);
+        const char* hostname = lv_textarea_get_text(uiManager._textarea_hostname);
 
         lv_label_set_text(uiManager._label_wifi_status, "Connecting...");
+        lv_obj_set_style_text_color(uiManager._label_wifi_status, lv_color_hex(0xF39C12), 0);
 
         WiFi.begin(ssid, password);
 
@@ -535,23 +640,82 @@ void UIManager::configEventHandler(lv_event_t* e) {
         }
 
         if (WiFi.status() == WL_CONNECTED) {
-            lv_label_set_text_fmt(uiManager._label_wifi_status, "Connected! IP: %s", WiFi.localIP().toString().c_str());
-            lv_obj_set_style_text_color(uiManager._label_wifi_status, lv_color_hex(0x27AE60), 0);
-
-            // Save credentials
+            // Save credentials and hostname
             Preferences prefs;
             if (prefs.begin(PREFS_NAMESPACE, false)) {
                 prefs.putString("wifi_ssid", ssid);
                 prefs.putString("wifi_pass", password);
+
+                // Save and apply hostname
+                String hostnameStr = String(hostname);
+                if (hostnameStr.length() > 0 && hostnameStr.length() <= 63) {
+                    prefs.putString("mdns_hostname", hostnameStr);
+
+                    // Restart mDNS with new hostname
+                    MDNS.end();
+                    if (MDNS.begin(hostnameStr.c_str())) {
+                        MDNS.addService("http", "tcp", 80);
+                    }
+                }
                 prefs.end();
             }
+
+            lv_label_set_text_fmt(uiManager._label_wifi_status, "Connected! %s.local",hostname);
+            lv_obj_set_style_text_color(uiManager._label_wifi_status, lv_color_hex(0x27AE60), 0);
         } else {
-            lv_label_set_text(uiManager._label_wifi_status, "Connection failed!");
+            lv_label_set_text(uiManager._label_wifi_status, "Failed!");
             lv_obj_set_style_text_color(uiManager._label_wifi_status, lv_color_hex(0xE74C3C), 0);
         }
     } else if (action == 2) {
-        // Calibration
+        // Calibration - save current pulses per liter first
+        const char* pulsesText = lv_textarea_get_text(uiManager._textarea_pulses_per_liter);
+        float pulsesPerLiter = atof(pulsesText);
+        if (pulsesPerLiter > 0) {
+            Preferences prefs;
+            if (prefs.begin(PREFS_NAMESPACE, false)) {
+                prefs.putFloat("pulses_per_l", pulsesPerLiter);
+                prefs.end();
+            }
+            hardwareControl.setCalibrationFactor(pulsesPerLiter);
+        }
         uiManager.showScreen(SCREEN_CALIBRATION);
+    } else if (action == 3) {
+        // WiFi Scan
+        lv_label_set_text(lv_obj_get_child(uiManager._btn_wifi_scan, 0), "Scanning...");
+        lv_timer_handler();
+
+        int n = WiFi.scanNetworks();
+
+        if (n > 0) {
+            String options = "";
+            for (int i = 0; i < n; i++) {
+                if (i > 0) options += "\n";
+                options += WiFi.SSID(i);
+                options += " (";
+                options += WiFi.RSSI(i);
+                options += " dBm)";
+            }
+            lv_dropdown_set_options(uiManager._dropdown_ssid, options.c_str());
+            lv_obj_clear_flag(uiManager._dropdown_ssid, LV_OBJ_FLAG_HIDDEN);
+            lv_label_set_text(lv_obj_get_child(uiManager._btn_wifi_scan, 0), "Scan Again");
+        } else {
+            lv_label_set_text(lv_obj_get_child(uiManager._btn_wifi_scan, 0), "No networks found");
+            delay(2000);
+            lv_label_set_text(lv_obj_get_child(uiManager._btn_wifi_scan, 0), "Scan Networks");
+        }
+    } else if (action == 4) {
+        // Dropdown selection changed
+        char buf[64];
+        lv_dropdown_get_selected_str(uiManager._dropdown_ssid, buf, sizeof(buf));
+
+        // Extract SSID (remove signal strength info)
+        String ssid = String(buf);
+        int spacePos = ssid.indexOf(" (");
+        if (spacePos > 0) {
+            ssid = ssid.substring(0, spacePos);
+        }
+
+        lv_textarea_set_text(uiManager._textarea_ssid, ssid.c_str());
     }
 }
 
@@ -674,5 +838,19 @@ void UIManager::calibrationEventHandler(lv_event_t* e) {
     if (uiManager._currentScreen == SCREEN_CALIBRATION) {
         lv_label_set_text_fmt(uiManager._label_calib_pulses,
             "Amount: %.1f ml", hardwareControl.getDispensedAmount());
+    }
+}
+
+void UIManager::textareaEventHandler(lv_event_t* e) {
+    lv_obj_t* textarea = lv_event_get_target(e);
+    lv_event_code_t code = lv_event_get_code(e);
+
+    if (code == LV_EVENT_FOCUSED) {
+        // Show keyboard and link it to the focused textarea
+        lv_keyboard_set_textarea(uiManager._keyboard_config, textarea);
+        lv_obj_clear_flag(uiManager._keyboard_config, LV_OBJ_FLAG_HIDDEN);
+    } else if (code == LV_EVENT_DEFOCUSED) {
+        // Hide keyboard when textarea loses focus
+        lv_obj_add_flag(uiManager._keyboard_config, LV_OBJ_FLAG_HIDDEN);
     }
 }

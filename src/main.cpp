@@ -124,13 +124,13 @@ void loop() {
     hardwareControl.update();
 
     // Update UI
-    uiManager.update();
+    // uiManager.update();
 
     // Update web server
     webServer.update();
 
-    // Small delay to prevent watchdog issues
-    delay(5);
+    // Minimal delay - let tasks run smoothly
+    delay(1);
 }
 
 void setupDisplay() {
@@ -151,25 +151,31 @@ void setupTouch() {
 void setupLVGL() {
     lv_init();
 
-    // Use single large buffer with proper alignment for PSRAM
-    // Buffer size: full screen height in 10 strips to reduce updates
-    size_t buf_size = SCREEN_WIDTH * (SCREEN_HEIGHT / 10) * sizeof(lv_color_t);
+    // Use double buffering with larger buffers to reduce partial updates
+    // Buffer size: 1/5 of screen to minimize number of flushes
+    size_t buf_size = SCREEN_WIDTH * (SCREEN_HEIGHT / 5) * sizeof(lv_color_t);
     buf1 = (lv_color_t *)heap_caps_aligned_alloc(64, buf_size, MALLOC_CAP_SPIRAM);
+    buf2 = (lv_color_t *)heap_caps_aligned_alloc(64, buf_size, MALLOC_CAP_SPIRAM);
 
-    if (buf1 != NULL) {
-        Serial.printf("Display buffer allocated in PSRAM: %d bytes\n", buf_size);
-        // Single buffer - simpler and may reduce jitter
-        lv_disp_draw_buf_init(&draw_buf, buf1, NULL, SCREEN_WIDTH * (SCREEN_HEIGHT / 10));
+    if (buf1 != NULL && buf2 != NULL) {
+        Serial.printf("Display buffers allocated in PSRAM: 2x%d bytes\n", buf_size);
+        // Double buffering - one buffer for drawing, one for DMA
+        lv_disp_draw_buf_init(&draw_buf, buf1, buf2, SCREEN_WIDTH * (SCREEN_HEIGHT / 5));
+    } else if (buf1 != NULL) {
+        Serial.printf("Single display buffer allocated in PSRAM: %d bytes\n", buf_size);
+        if (buf2 != NULL) free(buf2);
+        buf2 = NULL;
+        lv_disp_draw_buf_init(&draw_buf, buf1, NULL, SCREEN_WIDTH * (SCREEN_HEIGHT / 5));
     } else {
         Serial.println("PSRAM buffer failed, trying SRAM");
-        buf1 = (lv_color_t *)malloc(SCREEN_WIDTH * 20 * sizeof(lv_color_t));
+        buf1 = (lv_color_t *)malloc(SCREEN_WIDTH * 40 * sizeof(lv_color_t));
 
         if (buf1 == NULL) {
             Serial.println("ERROR: Failed to allocate display buffer!");
             return;
         }
 
-        lv_disp_draw_buf_init(&draw_buf, buf1, NULL, SCREEN_WIDTH * 20);
+        lv_disp_draw_buf_init(&draw_buf, buf1, NULL, SCREEN_WIDTH * 40);
     }
 
     // Initialize display driver
@@ -178,6 +184,8 @@ void setupLVGL() {
     disp_drv.ver_res = SCREEN_HEIGHT;
     disp_drv.flush_cb = my_disp_flush;
     disp_drv.draw_buf = &draw_buf;
+    disp_drv.direct_mode = 0;  // Use normal buffered mode
+    disp_drv.full_refresh = 0;  // Allow partial updates
     lv_disp_drv_register(&disp_drv);
 
     // Initialize input device driver (touch)

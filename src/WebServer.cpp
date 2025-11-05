@@ -90,6 +90,51 @@ void WebServerManager::begin() {
         }
     });
 
+    _server->on("/api/hostname", HTTP_GET, [this](AsyncWebServerRequest* request) {
+        Preferences prefs;
+        String hostname = DEFAULT_MDNS_HOSTNAME;
+        if (prefs.begin(PREFS_NAMESPACE, true)) {
+            hostname = prefs.getString("mdns_hostname", DEFAULT_MDNS_HOSTNAME);
+            prefs.end();
+        }
+        String json = "{\"hostname\":\"" + hostname + "\"}";
+        request->send(200, "application/json", json);
+    });
+
+    _server->on("/api/hostname", HTTP_POST, [this](AsyncWebServerRequest* request) {
+        if (request->hasParam("hostname", true)) {
+            String hostname = request->getParam("hostname", true)->value();
+
+            // Validate hostname (alphanumeric and hyphens, 1-63 chars)
+            if (hostname.length() > 0 && hostname.length() <= 63) {
+                bool valid = true;
+                for (size_t i = 0; i < hostname.length(); i++) {
+                    char c = hostname[i];
+                    if (!isalnum(c) && c != '-') {
+                        valid = false;
+                        break;
+                    }
+                }
+
+                if (valid) {
+                    // Save hostname
+                    Preferences prefs;
+                    if (prefs.begin(PREFS_NAMESPACE, false)) {
+                        prefs.putString("mdns_hostname", hostname);
+                        prefs.end();
+                    }
+                    request->send(200, "application/json", "{\"success\":true,\"message\":\"Hostname saved. Restart required.\"}");
+                } else {
+                    request->send(400, "application/json", "{\"success\":false,\"error\":\"Invalid hostname format\"}");
+                }
+            } else {
+                request->send(400, "application/json", "{\"success\":false,\"error\":\"Hostname must be 1-63 characters\"}");
+            }
+        } else {
+            request->send(400, "application/json", "{\"success\":false,\"error\":\"Missing hostname parameter\"}");
+        }
+    });
+
     _server->on("/api/calibration", HTTP_GET, [this](AsyncWebServerRequest* request) {
         float factor = hardwareControl.getCalibrationFactor();
         String json = "{\"pulsesPerLiter\":" + String(factor, 2) + "}";

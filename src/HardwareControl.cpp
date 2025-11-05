@@ -99,6 +99,7 @@ float HardwareControl::getFlowRate() {
 void HardwareControl::startDispensing(float targetML) {
     Serial.printf("Starting to dispense %.2f ml\n", targetML);
 
+
     _targetML = targetML;
     _dispensedML = 0;
     _state = DISPENSING;
@@ -106,7 +107,8 @@ void HardwareControl::startDispensing(float targetML) {
     _lastFlowCheckTime = millis();
     _lastPulseCount = 0;
     _totalPausedTime = 0;
-
+    
+    _lastPulseTime = millis();
     resetFlowCounter();
     openValve();
 }
@@ -129,6 +131,7 @@ void HardwareControl::resumeDispensing() {
 
     // Track total paused time to adjust timeout calculations
     _totalPausedTime += (millis() - _pauseStartTime);
+    _lastPulseTime = millis();
 
     _state = DISPENSING;
     _lastFlowCheckTime = millis();

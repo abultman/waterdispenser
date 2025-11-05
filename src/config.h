@@ -87,6 +87,10 @@
 #define DEFAULT_WIFI_SSID     ""
 #define DEFAULT_WIFI_PASSWORD ""
 
+// Default mDNS hostname (can be changed via config screen)
+// Device will be accessible at <hostname>.local
+#define DEFAULT_MDNS_HOSTNAME "waterdispenser"
+
 // WiFi connection timeout (milliseconds)
 #define WIFI_TIMEOUT    15000
 

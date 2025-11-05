@@ -3,6 +3,7 @@
 #include <WiFi.h>
 #include <Preferences.h>
 #include <nvs_flash.h>
+#include <ESPmDNS.h>
 #include "config.h"
 #include "display_driver.h"
 #include "GT911.h"
@@ -97,7 +98,17 @@ void setup() {
     Serial.flush();
     webServer.begin();
     if (WiFi.status() == WL_CONNECTED) {
-        Serial.printf("Web interface available at: http://%s\n", WiFi.localIP().toString().c_str());
+        // Get the configured hostname
+        Preferences prefs;
+        String hostname = DEFAULT_MDNS_HOSTNAME;
+        if (prefs.begin(PREFS_NAMESPACE, true)) {
+            hostname = prefs.getString("mdns_hostname", DEFAULT_MDNS_HOSTNAME);
+            prefs.end();
+        }
+
+        Serial.printf("Web interface available at:\n");
+        Serial.printf("  http://%s\n", WiFi.localIP().toString().c_str());
+        Serial.printf("  http://%s.local\n", hostname.c_str());
     }
 
     Serial.println("\n=================================");
@@ -181,12 +192,18 @@ void setupLVGL() {
 void setupWiFi() {
     WiFi.mode(WIFI_STA);
 
-    // Try to load saved credentials
+    // Try to load saved credentials and hostname
     Preferences prefs;
     if (prefs.begin(PREFS_NAMESPACE, true)) {
         String ssid = prefs.getString("wifi_ssid", "");
         String password = prefs.getString("wifi_pass", "");
+        String hostname = prefs.getString("mdns_hostname", DEFAULT_MDNS_HOSTNAME);
         prefs.end();
+
+        // Ensure hostname is valid (alphanumeric and hyphens only, max 63 chars)
+        if (hostname.length() == 0 || hostname.length() > 63) {
+            hostname = DEFAULT_MDNS_HOSTNAME;
+        }
 
         if (ssid.length() > 0) {
             Serial.printf("Attempting to connect to WiFi: %s\n", ssid.c_str());
@@ -201,6 +218,14 @@ void setupWiFi() {
 
             if (WiFi.status() == WL_CONNECTED) {
                 Serial.printf("\nWiFi connected! IP: %s\n", WiFi.localIP().toString().c_str());
+
+                // Start mDNS service with configured hostname
+                if (MDNS.begin(hostname.c_str())) {
+                    Serial.printf("mDNS responder started: %s.local\n", hostname.c_str());
+                    MDNS.addService("http", "tcp", 80);
+                } else {
+                    Serial.println("Error starting mDNS");
+                }
             } else {
                 Serial.println("\nWiFi connection failed. Use config screen to setup.");
             }

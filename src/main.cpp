@@ -186,6 +186,8 @@ void setupLVGL() {
     disp_drv.draw_buf = &draw_buf;
     disp_drv.direct_mode = 0;  // Use normal buffered mode
     disp_drv.full_refresh = 0;  // Allow partial updates
+    disp_drv.sw_rotate = 0;  // No software rotation
+    disp_drv.rotated = 0;  // Not rotated
     lv_disp_drv_register(&disp_drv);
 
     // Initialize input device driver (touch)
@@ -245,10 +247,26 @@ void setupWiFi() {
 
 // LVGL display flush callback
 void my_disp_flush(lv_disp_drv_t *disp, const lv_area_t *area, lv_color_t *color_p) {
-    uint32_t w = (area->x2 - area->x1 + 1);
-    uint32_t h = (area->y2 - area->y1 + 1);
+    // Ensure coordinates are valid
+    if (area->x1 < 0 || area->y1 < 0 || area->x2 >= SCREEN_WIDTH || area->y2 >= SCREEN_HEIGHT) {
+        lv_disp_flush_ready(disp);
+        return;
+    }
 
-    drawBitmap(area->x1, area->y1, w, h, (uint16_t *)&color_p->full);
+    // Cast color buffer directly - LVGL uses RGB565 which matches our display
+    void *color_buffer = (void *)color_p;
+
+    // Call esp_lcd_panel_draw_bitmap with proper coordinates
+    // Note: x_end and y_end are EXCLUSIVE (one past the last pixel)
+    esp_err_t ret = esp_lcd_panel_draw_bitmap(panel_handle,
+                                               area->x1, area->y1,
+                                               area->x2 + 1, area->y2 + 1,
+                                               color_buffer);
+
+    if (ret != ESP_OK) {
+        Serial.printf("Draw error: %d, area: x1=%d y1=%d x2=%d y2=%d\n",
+                      ret, area->x1, area->y1, area->x2, area->y2);
+    }
 
     lv_disp_flush_ready(disp);
 }

@@ -25,7 +25,7 @@ bool initRGBDisplay() {
     panel_config.timings.flags.pclk_idle_high = 0;
 
     panel_config.data_width = 16;
-    panel_config.sram_trans_align = 8;  // Smaller alignment to reduce latency
+    panel_config.sram_trans_align = 64;  // Match PSRAM alignment
     panel_config.psram_trans_align = 64;
     panel_config.hsync_gpio_num = LCD_HSYNC;
     panel_config.vsync_gpio_num = LCD_VSYNC;
@@ -52,11 +52,6 @@ bool initRGBDisplay() {
 
     panel_config.flags.disp_active_low = 0;
     panel_config.flags.fb_in_psram = 1;  // Enable PSRAM for framebuffer
-    panel_config.flags.refresh_on_demand = 0;  // Continuous refresh
-    panel_config.flags.relax_on_idle = 0;  // Don't relax timing
-
-    // Larger bounce buffer to reduce DMA interruptions
-    panel_config.bounce_buffer_size_px = SCREEN_WIDTH * 20;  // 20 lines bounce buffer
 
     // Create RGB panel
     esp_err_t ret = esp_lcd_new_rgb_panel(&panel_config, &panel_handle);

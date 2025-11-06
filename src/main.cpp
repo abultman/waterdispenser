@@ -130,7 +130,7 @@ void loop() {
     webServer.update();
 
     // Minimal delay - let tasks run smoothly
-    delay(1);
+    delay(5);
 }
 
 void setupDisplay() {
@@ -153,19 +153,20 @@ void setupLVGL() {
 
     // Use double buffering with larger buffers to reduce partial updates
     // Buffer size: 1/5 of screen to minimize number of flushes
-    size_t buf_size = SCREEN_WIDTH * (SCREEN_HEIGHT / 5) * sizeof(lv_color_t);
-    buf1 = (lv_color_t *)heap_caps_aligned_alloc(64, buf_size, MALLOC_CAP_SPIRAM);
-    buf2 = (lv_color_t *)heap_caps_aligned_alloc(64, buf_size, MALLOC_CAP_SPIRAM);
+    size_t buf_size = SCREEN_WIDTH * (SCREEN_HEIGHT / 4) * sizeof(lv_color_t);
+    buf1 = (lv_color_t *)heap_caps_aligned_alloc(64, buf_size, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+    buf2 = (lv_color_t *)heap_caps_aligned_alloc(64, buf_size, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+
 
     if (buf1 != NULL && buf2 != NULL) {
         Serial.printf("Display buffers allocated in PSRAM: 2x%d bytes\n", buf_size);
         // Double buffering - one buffer for drawing, one for DMA
-        lv_disp_draw_buf_init(&draw_buf, buf1, buf2, SCREEN_WIDTH * (SCREEN_HEIGHT / 5));
+        lv_disp_draw_buf_init(&draw_buf, buf1, buf2, SCREEN_WIDTH * (SCREEN_HEIGHT / 4));
     } else if (buf1 != NULL) {
         Serial.printf("Single display buffer allocated in PSRAM: %d bytes\n", buf_size);
         if (buf2 != NULL) free(buf2);
         buf2 = NULL;
-        lv_disp_draw_buf_init(&draw_buf, buf1, NULL, SCREEN_WIDTH * (SCREEN_HEIGHT / 5));
+        lv_disp_draw_buf_init(&draw_buf, buf1, NULL, SCREEN_WIDTH * (SCREEN_HEIGHT / 4));
     } else {
         Serial.println("PSRAM buffer failed, trying SRAM");
         buf1 = (lv_color_t *)malloc(SCREEN_WIDTH * 40 * sizeof(lv_color_t));
@@ -184,10 +185,6 @@ void setupLVGL() {
     disp_drv.ver_res = SCREEN_HEIGHT;
     disp_drv.flush_cb = my_disp_flush;
     disp_drv.draw_buf = &draw_buf;
-    disp_drv.direct_mode = 0;  // Use normal buffered mode
-    disp_drv.full_refresh = 0;  // Allow partial updates
-    disp_drv.sw_rotate = 0;  // No software rotation
-    disp_drv.rotated = 0;  // Not rotated
     lv_disp_drv_register(&disp_drv);
 
     // Initialize input device driver (touch)
@@ -247,12 +244,6 @@ void setupWiFi() {
 
 // LVGL display flush callback
 void my_disp_flush(lv_disp_drv_t *disp, const lv_area_t *area, lv_color_t *color_p) {
-    // Ensure coordinates are valid
-    if (area->x1 < 0 || area->y1 < 0 || area->x2 >= SCREEN_WIDTH || area->y2 >= SCREEN_HEIGHT) {
-        lv_disp_flush_ready(disp);
-        return;
-    }
-
     // Cast color buffer directly - LVGL uses RGB565 which matches our display
     void *color_buffer = (void *)color_p;
 
@@ -275,9 +266,7 @@ void my_disp_flush(lv_disp_drv_t *disp, const lv_area_t *area, lv_color_t *color
 void my_touchpad_read(lv_indev_drv_t *indev_driver, lv_indev_data_t *data) {
     TouchPoint point = touch.readTouch();
 
-    
     if (point.touched) {
-        Serial.printf("Touched: %d, %d \n", point.x, point.y);
         data->state = LV_INDEV_STATE_PR;
         data->point.x = point.x;
         data->point.y = point.y;

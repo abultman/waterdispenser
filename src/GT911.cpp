@@ -110,19 +110,10 @@ TouchPoint GT911::readTouch() {
         uint16_t x = data[1] | (data[2] << 8);
         uint16_t y = data[3] | (data[4] << 8);
 
-        // Debug: print raw values
-        Serial.printf("GT911 raw: x=%d y=%d (first 8 bytes: %02X %02X %02X %02X %02X %02X %02X %02X)\n",
-                      x, y, data[0], data[1], data[2], data[3], data[4], data[5], data[6], data[7]);
-
-        // GT911 native resolution is 480x272
-        // Scale to display resolution (800x480)
-
         point.x = (float)(((float)x / (float) _width) * 800.0);
         point.y = (float)(((float)y / (float) _height) * 480.0);
 
         point.touched = true;
-
-        Serial.printf("GT911 scaled: x=%d y=%d\n", point.x, point.y);
     }
 
     // Clear touch flag

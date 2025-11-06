@@ -2,6 +2,7 @@
 #define UI_MANAGER_H
 
 #include <lvgl.h>
+#include "VolumeUnit.h"
 
 enum UIScreen {
     SCREEN_MAIN,
@@ -102,6 +103,7 @@ private:
     // Helper methods
     void updateDispensingScreen();
     void updateMainStatus();
+    void updatePresetLabelsAndValues(const VolumeUnit* unit);
 };
 
 // Global instance

@@ -108,16 +108,18 @@ void UIManager::createMainScreen() {
     int preset2_ml = PRESET_2_ML;
     int preset3_ml = PRESET_3_ML;
     int preset4_ml = PRESET_4_ML;
-    int volume_unit = 0;  // 0=ml, 1=L
+    VolumeUnitType unitType = UNIT_MILLILITERS;
 
     if (prefs.begin(PREFS_NAMESPACE, true)) {
         preset1_ml = prefs.getInt("preset1_ml", PRESET_1_ML);
         preset2_ml = prefs.getInt("preset2_ml", PRESET_2_ML);
         preset3_ml = prefs.getInt("preset3_ml", PRESET_3_ML);
         preset4_ml = prefs.getInt("preset4_ml", PRESET_4_ML);
-        volume_unit = prefs.getInt("volume_unit", 0);
+        unitType = (VolumeUnitType)prefs.getInt("volume_unit", UNIT_MILLILITERS);
         prefs.end();
     }
+
+    const VolumeUnit* unit = getVolumeUnit(unitType);
 
     // Preset buttons
     int btn_width = 160;
@@ -125,19 +127,12 @@ void UIManager::createMainScreen() {
     int spacing = 20;
     int start_y = 130;
 
-    char labelText[32];
-
     _btn_preset1 = lv_btn_create(_screen_main);
     lv_obj_set_size(_btn_preset1, btn_width, btn_height);
     lv_obj_align(_btn_preset1, LV_ALIGN_TOP_LEFT, 20, start_y);
     lv_obj_add_event_cb(_btn_preset1, mainScreenEventHandler, LV_EVENT_CLICKED, (void*)preset1_ml);
     lv_obj_t* label1 = lv_label_create(_btn_preset1);
-    if (volume_unit == 0) {
-        snprintf(labelText, sizeof(labelText), "%d ml", preset1_ml);
-    } else {
-        snprintf(labelText, sizeof(labelText), "%.3f L", preset1_ml / 1000.0f);
-    }
-    lv_label_set_text(label1, labelText);
+    lv_label_set_text(label1, (unit->format(preset1_ml) + " " + unit->getSuffix()).c_str());
     lv_obj_set_style_text_font(label1, &lv_font_montserrat_24, 0);
     lv_obj_center(label1);
 
@@ -146,12 +141,7 @@ void UIManager::createMainScreen() {
     lv_obj_align(_btn_preset2, LV_ALIGN_TOP_LEFT, 20 + btn_width + spacing, start_y);
     lv_obj_add_event_cb(_btn_preset2, mainScreenEventHandler, LV_EVENT_CLICKED, (void*)preset2_ml);
     lv_obj_t* label2 = lv_label_create(_btn_preset2);
-    if (volume_unit == 0) {
-        snprintf(labelText, sizeof(labelText), "%d ml", preset2_ml);
-    } else {
-        snprintf(labelText, sizeof(labelText), "%.3f L", preset2_ml / 1000.0f);
-    }
-    lv_label_set_text(label2, labelText);
+    lv_label_set_text(label2, (unit->format(preset2_ml) + " " + unit->getSuffix()).c_str());
     lv_obj_set_style_text_font(label2, &lv_font_montserrat_24, 0);
     lv_obj_center(label2);
 
@@ -160,12 +150,7 @@ void UIManager::createMainScreen() {
     lv_obj_align(_btn_preset3, LV_ALIGN_TOP_LEFT, 20 + (btn_width + spacing) * 2, start_y);
     lv_obj_add_event_cb(_btn_preset3, mainScreenEventHandler, LV_EVENT_CLICKED, (void*)preset3_ml);
     lv_obj_t* label3 = lv_label_create(_btn_preset3);
-    if (volume_unit == 0) {
-        snprintf(labelText, sizeof(labelText), "%d ml", preset3_ml);
-    } else {
-        snprintf(labelText, sizeof(labelText), "%.3f L", preset3_ml / 1000.0f);
-    }
-    lv_label_set_text(label3, labelText);
+    lv_label_set_text(label3, (unit->format(preset3_ml) + " " + unit->getSuffix()).c_str());
     lv_obj_set_style_text_font(label3, &lv_font_montserrat_24, 0);
     lv_obj_center(label3);
 
@@ -174,12 +159,7 @@ void UIManager::createMainScreen() {
     lv_obj_align(_btn_preset4, LV_ALIGN_TOP_LEFT, 20 + (btn_width + spacing) * 3, start_y);
     lv_obj_add_event_cb(_btn_preset4, mainScreenEventHandler, LV_EVENT_CLICKED, (void*)preset4_ml);
     lv_obj_t* label4 = lv_label_create(_btn_preset4);
-    if (volume_unit == 0) {
-        snprintf(labelText, sizeof(labelText), "%d ml", preset4_ml);
-    } else {
-        snprintf(labelText, sizeof(labelText), "%.3f L", preset4_ml / 1000.0f);
-    }
-    lv_label_set_text(label4, labelText);
+    lv_label_set_text(label4, (unit->format(preset4_ml) + " " + unit->getSuffix()).c_str());
     lv_obj_set_style_text_font(label4, &lv_font_montserrat_24, 0);
     lv_obj_center(label4);
 
@@ -707,11 +687,7 @@ void UIManager::createConfigScreen() {
         float pulsesPerLiter = prefs.getFloat("pulses_per_l", DEFAULT_PULSES_PER_LITER);
 
         // Load volume settings
-        int unit = prefs.getInt("volume_unit", 0);  // 0=ml, 1=L
-        int preset1 = prefs.getInt("preset1_ml", PRESET_1_ML);
-        int preset2 = prefs.getInt("preset2_ml", PRESET_2_ML);
-        int preset3 = prefs.getInt("preset3_ml", PRESET_3_ML);
-        int preset4 = prefs.getInt("preset4_ml", PRESET_4_ML);
+        VolumeUnitType unitType = (VolumeUnitType)prefs.getInt("volume_unit", UNIT_MILLILITERS);
 
         if (ssid.length() > 0) {
             lv_textarea_set_text(_textarea_ssid, ssid.c_str());
@@ -724,42 +700,14 @@ void UIManager::createConfigScreen() {
         lv_textarea_set_text(_textarea_pulses_per_liter, pulsesStr);
 
         // Set unit dropdown
-        lv_dropdown_set_selected(_dropdown_unit, unit);
-
-        // Set preset values and labels based on selected unit
-        char presetStr[16];
-        if (unit == 0) {  // Milliliters
-            lv_label_set_text(_label_preset1, "Preset 1 (ml):");
-            lv_label_set_text(_label_preset2, "Preset 2 (ml):");
-            lv_label_set_text(_label_preset3, "Preset 3 (ml):");
-            lv_label_set_text(_label_preset4, "Preset 4 (ml):");
-
-            snprintf(presetStr, sizeof(presetStr), "%d", preset1);
-            lv_textarea_set_text(_textarea_preset1, presetStr);
-            snprintf(presetStr, sizeof(presetStr), "%d", preset2);
-            lv_textarea_set_text(_textarea_preset2, presetStr);
-            snprintf(presetStr, sizeof(presetStr), "%d", preset3);
-            lv_textarea_set_text(_textarea_preset3, presetStr);
-            snprintf(presetStr, sizeof(presetStr), "%d", preset4);
-            lv_textarea_set_text(_textarea_preset4, presetStr);
-        } else {  // Liters
-            lv_label_set_text(_label_preset1, "Preset 1 (L):");
-            lv_label_set_text(_label_preset2, "Preset 2 (L):");
-            lv_label_set_text(_label_preset3, "Preset 3 (L):");
-            lv_label_set_text(_label_preset4, "Preset 4 (L):");
-
-            snprintf(presetStr, sizeof(presetStr), "%.3f", preset1 / 1000.0f);
-            lv_textarea_set_text(_textarea_preset1, presetStr);
-            snprintf(presetStr, sizeof(presetStr), "%.3f", preset2 / 1000.0f);
-            lv_textarea_set_text(_textarea_preset2, presetStr);
-            snprintf(presetStr, sizeof(presetStr), "%.3f", preset3 / 1000.0f);
-            lv_textarea_set_text(_textarea_preset3, presetStr);
-            snprintf(presetStr, sizeof(presetStr), "%.3f", preset4 / 1000.0f);
-            lv_textarea_set_text(_textarea_preset4, presetStr);
-        }
+        lv_dropdown_set_selected(_dropdown_unit, unitType);
 
         prefs.end();
     }
+
+    // Update preset labels and values using helper method
+    const VolumeUnit* unit = getVolumeUnit((VolumeUnitType)lv_dropdown_get_selected(_dropdown_unit));
+    updatePresetLabelsAndValues(unit);
 }
 
 void UIManager::configEventHandler(lv_event_t* e) {
@@ -775,8 +723,11 @@ void UIManager::configEventHandler(lv_event_t* e) {
                 prefs.putFloat("pulses_per_l", pulsesPerLiter);
 
                 // Save volume settings
-                int unit = lv_dropdown_get_selected(uiManager._dropdown_unit);
-                prefs.putInt("volume_unit", unit);
+                VolumeUnitType unitType = (VolumeUnitType)lv_dropdown_get_selected(uiManager._dropdown_unit);
+                prefs.putInt("volume_unit", unitType);
+
+                // Get volume unit for conversion
+                const VolumeUnit* unit = getVolumeUnit(unitType);
 
                 // Read preset values and convert to ml for storage
                 const char* preset1_text = lv_textarea_get_text(uiManager._textarea_preset1);
@@ -784,23 +735,16 @@ void UIManager::configEventHandler(lv_event_t* e) {
                 const char* preset3_text = lv_textarea_get_text(uiManager._textarea_preset3);
                 const char* preset4_text = lv_textarea_get_text(uiManager._textarea_preset4);
 
-                float preset1_value = atof(preset1_text);
-                float preset2_value = atof(preset2_text);
-                float preset3_value = atof(preset3_text);
-                float preset4_value = atof(preset4_text);
+                // Use unit->toMilliliters() for conversion
+                int preset1_ml = unit->toMilliliters(atof(preset1_text));
+                int preset2_ml = unit->toMilliliters(atof(preset2_text));
+                int preset3_ml = unit->toMilliliters(atof(preset3_text));
+                int preset4_ml = unit->toMilliliters(atof(preset4_text));
 
-                // Convert to ml if currently in Liters
-                if (unit == 1) {
-                    preset1_value *= 1000;
-                    preset2_value *= 1000;
-                    preset3_value *= 1000;
-                    preset4_value *= 1000;
-                }
-
-                prefs.putInt("preset1_ml", (int)preset1_value);
-                prefs.putInt("preset2_ml", (int)preset2_value);
-                prefs.putInt("preset3_ml", (int)preset3_value);
-                prefs.putInt("preset4_ml", (int)preset4_value);
+                prefs.putInt("preset1_ml", preset1_ml);
+                prefs.putInt("preset2_ml", preset2_ml);
+                prefs.putInt("preset3_ml", preset3_ml);
+                prefs.putInt("preset4_ml", preset4_ml);
 
                 prefs.end();
             }
@@ -903,52 +847,11 @@ void UIManager::configEventHandler(lv_event_t* e) {
         lv_textarea_set_text(uiManager._textarea_ssid, ssid.c_str());
     } else if (action == 5) {
         // Unit dropdown changed - convert preset displays and update labels
-        int unit = lv_dropdown_get_selected(uiManager._dropdown_unit);
+        VolumeUnitType newUnitType = (VolumeUnitType)lv_dropdown_get_selected(uiManager._dropdown_unit);
+        const VolumeUnit* newUnit = getVolumeUnit(newUnitType);
 
-        // Read current values from textareas and convert
-        const char* preset1_text = lv_textarea_get_text(uiManager._textarea_preset1);
-        const char* preset2_text = lv_textarea_get_text(uiManager._textarea_preset2);
-        const char* preset3_text = lv_textarea_get_text(uiManager._textarea_preset3);
-        const char* preset4_text = lv_textarea_get_text(uiManager._textarea_preset4);
-
-        float preset1 = atof(preset1_text);
-        float preset2 = atof(preset2_text);
-        float preset3 = atof(preset3_text);
-        float preset4 = atof(preset4_text);
-
-        char buf[32];
-
-        if (unit == 0) {
-            // Switched to Milliliters - convert from L to ml and update labels
-            lv_label_set_text(uiManager._label_preset1, "Preset 1 (ml):");
-            lv_label_set_text(uiManager._label_preset2, "Preset 2 (ml):");
-            lv_label_set_text(uiManager._label_preset3, "Preset 3 (ml):");
-            lv_label_set_text(uiManager._label_preset4, "Preset 4 (ml):");
-
-            snprintf(buf, sizeof(buf), "%d", (int)(preset1 * 1000));
-            lv_textarea_set_text(uiManager._textarea_preset1, buf);
-            snprintf(buf, sizeof(buf), "%d", (int)(preset2 * 1000));
-            lv_textarea_set_text(uiManager._textarea_preset2, buf);
-            snprintf(buf, sizeof(buf), "%d", (int)(preset3 * 1000));
-            lv_textarea_set_text(uiManager._textarea_preset3, buf);
-            snprintf(buf, sizeof(buf), "%d", (int)(preset4 * 1000));
-            lv_textarea_set_text(uiManager._textarea_preset4, buf);
-        } else {
-            // Switched to Liters - convert from ml to L and update labels
-            lv_label_set_text(uiManager._label_preset1, "Preset 1 (L):");
-            lv_label_set_text(uiManager._label_preset2, "Preset 2 (L):");
-            lv_label_set_text(uiManager._label_preset3, "Preset 3 (L):");
-            lv_label_set_text(uiManager._label_preset4, "Preset 4 (L):");
-
-            snprintf(buf, sizeof(buf), "%.3f", preset1 / 1000.0f);
-            lv_textarea_set_text(uiManager._textarea_preset1, buf);
-            snprintf(buf, sizeof(buf), "%.3f", preset2 / 1000.0f);
-            lv_textarea_set_text(uiManager._textarea_preset2, buf);
-            snprintf(buf, sizeof(buf), "%.3f", preset3 / 1000.0f);
-            lv_textarea_set_text(uiManager._textarea_preset3, buf);
-            snprintf(buf, sizeof(buf), "%.3f", preset4 / 1000.0f);
-            lv_textarea_set_text(uiManager._textarea_preset4, buf);
-        }
+        // Simply reload the preset values from storage using the new unit
+        uiManager.updatePresetLabelsAndValues(newUnit);
     }
 }
 
@@ -1086,4 +989,36 @@ void UIManager::textareaEventHandler(lv_event_t* e) {
         // Hide keyboard when textarea loses focus
         lv_obj_add_flag(uiManager._keyboard_config, LV_OBJ_FLAG_HIDDEN);
     }
+}
+
+// Helper method to update preset labels and values based on unit
+void UIManager::updatePresetLabelsAndValues(const VolumeUnit* unit) {
+    // Load current preset values (in ml)
+    Preferences prefs;
+    if (!prefs.begin(PREFS_NAMESPACE, true)) {
+        return;
+    }
+
+    int preset1 = prefs.getInt("preset1_ml", PRESET_1_ML);
+    int preset2 = prefs.getInt("preset2_ml", PRESET_2_ML);
+    int preset3 = prefs.getInt("preset3_ml", PRESET_3_ML);
+    int preset4 = prefs.getInt("preset4_ml", PRESET_4_ML);
+    prefs.end();
+
+    // Update labels with unit suffix
+    String label1 = "Preset 1 (" + String(unit->getSuffix()) + "):";
+    String label2 = "Preset 2 (" + String(unit->getSuffix()) + "):";
+    String label3 = "Preset 3 (" + String(unit->getSuffix()) + "):";
+    String label4 = "Preset 4 (" + String(unit->getSuffix()) + "):";
+
+    lv_label_set_text(_label_preset1, label1.c_str());
+    lv_label_set_text(_label_preset2, label2.c_str());
+    lv_label_set_text(_label_preset3, label3.c_str());
+    lv_label_set_text(_label_preset4, label4.c_str());
+
+    // Update textarea values
+    lv_textarea_set_text(_textarea_preset1, unit->format(preset1).c_str());
+    lv_textarea_set_text(_textarea_preset2, unit->format(preset2).c_str());
+    lv_textarea_set_text(_textarea_preset3, unit->format(preset3).c_str());
+    lv_textarea_set_text(_textarea_preset4, unit->format(preset4).c_str());
 }

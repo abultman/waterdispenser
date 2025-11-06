@@ -124,7 +124,7 @@ void loop() {
     hardwareControl.update();
 
     // Update UI
-    // uiManager.update();
+    uiManager.update();
 
     // Update web server
     webServer.update();

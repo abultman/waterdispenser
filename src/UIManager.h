@@ -59,6 +59,15 @@ private:
     lv_obj_t* _textarea_password;
     lv_obj_t* _textarea_hostname;
     lv_obj_t* _textarea_pulses_per_liter;
+    lv_obj_t* _textarea_preset1;
+    lv_obj_t* _textarea_preset2;
+    lv_obj_t* _textarea_preset3;
+    lv_obj_t* _textarea_preset4;
+    lv_obj_t* _label_preset1;
+    lv_obj_t* _label_preset2;
+    lv_obj_t* _label_preset3;
+    lv_obj_t* _label_preset4;
+    lv_obj_t* _dropdown_unit;
     lv_obj_t* _btn_wifi_scan;
     lv_obj_t* _btn_wifi_connect;
     lv_obj_t* _btn_calibrate;

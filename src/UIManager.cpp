@@ -102,45 +102,84 @@ void UIManager::createMainScreen() {
     lv_obj_set_style_text_color(_label_status, lv_color_hex(0x95A5A6), 0);
     lv_obj_align(_label_status, LV_ALIGN_TOP_MID, 0, 70);
 
+    // Load preset volumes from preferences
+    Preferences prefs;
+    int preset1_ml = PRESET_1_ML;
+    int preset2_ml = PRESET_2_ML;
+    int preset3_ml = PRESET_3_ML;
+    int preset4_ml = PRESET_4_ML;
+    int volume_unit = 0;  // 0=ml, 1=L
+
+    if (prefs.begin(PREFS_NAMESPACE, true)) {
+        preset1_ml = prefs.getInt("preset1_ml", PRESET_1_ML);
+        preset2_ml = prefs.getInt("preset2_ml", PRESET_2_ML);
+        preset3_ml = prefs.getInt("preset3_ml", PRESET_3_ML);
+        preset4_ml = prefs.getInt("preset4_ml", PRESET_4_ML);
+        volume_unit = prefs.getInt("volume_unit", 0);
+        prefs.end();
+    }
+
     // Preset buttons
     int btn_width = 160;
     int btn_height = 100;
     int spacing = 20;
     int start_y = 130;
 
+    char labelText[32];
+
     _btn_preset1 = lv_btn_create(_screen_main);
     lv_obj_set_size(_btn_preset1, btn_width, btn_height);
     lv_obj_align(_btn_preset1, LV_ALIGN_TOP_LEFT, 20, start_y);
-    lv_obj_add_event_cb(_btn_preset1, mainScreenEventHandler, LV_EVENT_CLICKED, (void*)PRESET_1_ML);
+    lv_obj_add_event_cb(_btn_preset1, mainScreenEventHandler, LV_EVENT_CLICKED, (void*)preset1_ml);
     lv_obj_t* label1 = lv_label_create(_btn_preset1);
-    lv_label_set_text_fmt(label1, "%d ml", PRESET_1_ML);
+    if (volume_unit == 0) {
+        snprintf(labelText, sizeof(labelText), "%d ml", preset1_ml);
+    } else {
+        snprintf(labelText, sizeof(labelText), "%.3f L", preset1_ml / 1000.0f);
+    }
+    lv_label_set_text(label1, labelText);
     lv_obj_set_style_text_font(label1, &lv_font_montserrat_24, 0);
     lv_obj_center(label1);
 
     _btn_preset2 = lv_btn_create(_screen_main);
     lv_obj_set_size(_btn_preset2, btn_width, btn_height);
     lv_obj_align(_btn_preset2, LV_ALIGN_TOP_LEFT, 20 + btn_width + spacing, start_y);
-    lv_obj_add_event_cb(_btn_preset2, mainScreenEventHandler, LV_EVENT_CLICKED, (void*)PRESET_2_ML);
+    lv_obj_add_event_cb(_btn_preset2, mainScreenEventHandler, LV_EVENT_CLICKED, (void*)preset2_ml);
     lv_obj_t* label2 = lv_label_create(_btn_preset2);
-    lv_label_set_text_fmt(label2, "%d ml", PRESET_2_ML);
+    if (volume_unit == 0) {
+        snprintf(labelText, sizeof(labelText), "%d ml", preset2_ml);
+    } else {
+        snprintf(labelText, sizeof(labelText), "%.3f L", preset2_ml / 1000.0f);
+    }
+    lv_label_set_text(label2, labelText);
     lv_obj_set_style_text_font(label2, &lv_font_montserrat_24, 0);
     lv_obj_center(label2);
 
     _btn_preset3 = lv_btn_create(_screen_main);
     lv_obj_set_size(_btn_preset3, btn_width, btn_height);
     lv_obj_align(_btn_preset3, LV_ALIGN_TOP_LEFT, 20 + (btn_width + spacing) * 2, start_y);
-    lv_obj_add_event_cb(_btn_preset3, mainScreenEventHandler, LV_EVENT_CLICKED, (void*)PRESET_3_ML);
+    lv_obj_add_event_cb(_btn_preset3, mainScreenEventHandler, LV_EVENT_CLICKED, (void*)preset3_ml);
     lv_obj_t* label3 = lv_label_create(_btn_preset3);
-    lv_label_set_text_fmt(label3, "%d ml", PRESET_3_ML);
+    if (volume_unit == 0) {
+        snprintf(labelText, sizeof(labelText), "%d ml", preset3_ml);
+    } else {
+        snprintf(labelText, sizeof(labelText), "%.3f L", preset3_ml / 1000.0f);
+    }
+    lv_label_set_text(label3, labelText);
     lv_obj_set_style_text_font(label3, &lv_font_montserrat_24, 0);
     lv_obj_center(label3);
 
     _btn_preset4 = lv_btn_create(_screen_main);
     lv_obj_set_size(_btn_preset4, btn_width, btn_height);
     lv_obj_align(_btn_preset4, LV_ALIGN_TOP_LEFT, 20 + (btn_width + spacing) * 3, start_y);
-    lv_obj_add_event_cb(_btn_preset4, mainScreenEventHandler, LV_EVENT_CLICKED, (void*)PRESET_4_ML);
+    lv_obj_add_event_cb(_btn_preset4, mainScreenEventHandler, LV_EVENT_CLICKED, (void*)preset4_ml);
     lv_obj_t* label4 = lv_label_create(_btn_preset4);
-    lv_label_set_text_fmt(label4, "%d ml", PRESET_4_ML);
+    if (volume_unit == 0) {
+        snprintf(labelText, sizeof(labelText), "%d ml", preset4_ml);
+    } else {
+        snprintf(labelText, sizeof(labelText), "%.3f L", preset4_ml / 1000.0f);
+    }
+    lv_label_set_text(label4, labelText);
     lv_obj_set_style_text_font(label4, &lv_font_montserrat_24, 0);
     lv_obj_center(label4);
 
@@ -553,6 +592,80 @@ void UIManager::createConfigScreen() {
     lv_obj_add_event_cb(_textarea_hostname, textareaEventHandler, LV_EVENT_FOCUSED, NULL);
     lv_obj_add_event_cb(_textarea_hostname, textareaEventHandler, LV_EVENT_DEFOCUSED, NULL);
 
+    // ========== Volume Configuration Section ==========
+    lv_obj_t* volume_section_title = lv_label_create(_config_scroll_container);
+    lv_label_set_text(volume_section_title, "Volume Configuration");
+    lv_obj_set_style_text_font(volume_section_title, &lv_font_montserrat_20, 0);
+    lv_obj_set_style_text_color(volume_section_title, lv_color_hex(0x3498DB), 0);
+    lv_obj_set_style_pad_top(volume_section_title, 20, 0);
+
+    lv_obj_t* label_unit = lv_label_create(_config_scroll_container);
+    lv_label_set_text(label_unit, "Display Unit:");
+    lv_obj_set_style_text_color(label_unit, lv_color_white(), 0);
+
+    _dropdown_unit = lv_dropdown_create(_config_scroll_container);
+    lv_obj_set_width(_dropdown_unit, SCREEN_WIDTH - 80);
+    lv_dropdown_set_options(_dropdown_unit, "Milliliters (ml)\nLiters (L)");
+    lv_obj_add_event_cb(_dropdown_unit, configEventHandler, LV_EVENT_VALUE_CHANGED, (void*)5);
+
+    // Preset volumes
+    lv_obj_t* label_presets = lv_label_create(_config_scroll_container);
+    lv_label_set_text(label_presets, "Quick Dispense Presets:");
+    lv_obj_set_style_text_color(label_presets, lv_color_white(), 0);
+    lv_obj_set_style_pad_top(label_presets, 10, 0);
+
+    // Preset 1
+    _label_preset1 = lv_label_create(_config_scroll_container);
+    lv_label_set_text(_label_preset1, "Preset 1 (ml):");
+    lv_obj_set_style_text_color(_label_preset1, lv_color_white(), 0);
+
+    _textarea_preset1 = lv_textarea_create(_config_scroll_container);
+    lv_obj_set_width(_textarea_preset1, SCREEN_WIDTH - 80);
+    lv_obj_set_height(_textarea_preset1, 50);
+    lv_textarea_set_one_line(_textarea_preset1, true);
+    lv_textarea_set_placeholder_text(_textarea_preset1, "e.g., 250");
+    lv_obj_add_event_cb(_textarea_preset1, textareaEventHandler, LV_EVENT_FOCUSED, NULL);
+    lv_obj_add_event_cb(_textarea_preset1, textareaEventHandler, LV_EVENT_DEFOCUSED, NULL);
+
+    // Preset 2
+    _label_preset2 = lv_label_create(_config_scroll_container);
+    lv_label_set_text(_label_preset2, "Preset 2 (ml):");
+    lv_obj_set_style_text_color(_label_preset2, lv_color_white(), 0);
+
+    _textarea_preset2 = lv_textarea_create(_config_scroll_container);
+    lv_obj_set_width(_textarea_preset2, SCREEN_WIDTH - 80);
+    lv_obj_set_height(_textarea_preset2, 50);
+    lv_textarea_set_one_line(_textarea_preset2, true);
+    lv_textarea_set_placeholder_text(_textarea_preset2, "e.g., 500");
+    lv_obj_add_event_cb(_textarea_preset2, textareaEventHandler, LV_EVENT_FOCUSED, NULL);
+    lv_obj_add_event_cb(_textarea_preset2, textareaEventHandler, LV_EVENT_DEFOCUSED, NULL);
+
+    // Preset 3
+    _label_preset3 = lv_label_create(_config_scroll_container);
+    lv_label_set_text(_label_preset3, "Preset 3 (ml):");
+    lv_obj_set_style_text_color(_label_preset3, lv_color_white(), 0);
+
+    _textarea_preset3 = lv_textarea_create(_config_scroll_container);
+    lv_obj_set_width(_textarea_preset3, SCREEN_WIDTH - 80);
+    lv_obj_set_height(_textarea_preset3, 50);
+    lv_textarea_set_one_line(_textarea_preset3, true);
+    lv_textarea_set_placeholder_text(_textarea_preset3, "e.g., 750");
+    lv_obj_add_event_cb(_textarea_preset3, textareaEventHandler, LV_EVENT_FOCUSED, NULL);
+    lv_obj_add_event_cb(_textarea_preset3, textareaEventHandler, LV_EVENT_DEFOCUSED, NULL);
+
+    // Preset 4
+    _label_preset4 = lv_label_create(_config_scroll_container);
+    lv_label_set_text(_label_preset4, "Preset 4 (ml):");
+    lv_obj_set_style_text_color(_label_preset4, lv_color_white(), 0);
+
+    _textarea_preset4 = lv_textarea_create(_config_scroll_container);
+    lv_obj_set_width(_textarea_preset4, SCREEN_WIDTH - 80);
+    lv_obj_set_height(_textarea_preset4, 50);
+    lv_textarea_set_one_line(_textarea_preset4, true);
+    lv_textarea_set_placeholder_text(_textarea_preset4, "e.g., 1000");
+    lv_obj_add_event_cb(_textarea_preset4, textareaEventHandler, LV_EVENT_FOCUSED, NULL);
+    lv_obj_add_event_cb(_textarea_preset4, textareaEventHandler, LV_EVENT_DEFOCUSED, NULL);
+
     // ========== Calibration Section ==========
     lv_obj_t* calib_section_title = lv_label_create(_config_scroll_container);
     lv_label_set_text(calib_section_title, "Flow Sensor Calibration");
@@ -593,6 +706,13 @@ void UIManager::createConfigScreen() {
         String hostname = prefs.getString("mdns_hostname", DEFAULT_MDNS_HOSTNAME);
         float pulsesPerLiter = prefs.getFloat("pulses_per_l", DEFAULT_PULSES_PER_LITER);
 
+        // Load volume settings
+        int unit = prefs.getInt("volume_unit", 0);  // 0=ml, 1=L
+        int preset1 = prefs.getInt("preset1_ml", PRESET_1_ML);
+        int preset2 = prefs.getInt("preset2_ml", PRESET_2_ML);
+        int preset3 = prefs.getInt("preset3_ml", PRESET_3_ML);
+        int preset4 = prefs.getInt("preset4_ml", PRESET_4_ML);
+
         if (ssid.length() > 0) {
             lv_textarea_set_text(_textarea_ssid, ssid.c_str());
             lv_textarea_set_text(_textarea_password, password.c_str());
@@ -602,6 +722,42 @@ void UIManager::createConfigScreen() {
         char pulsesStr[16];
         snprintf(pulsesStr, sizeof(pulsesStr), "%.2f", pulsesPerLiter);
         lv_textarea_set_text(_textarea_pulses_per_liter, pulsesStr);
+
+        // Set unit dropdown
+        lv_dropdown_set_selected(_dropdown_unit, unit);
+
+        // Set preset values and labels based on selected unit
+        char presetStr[16];
+        if (unit == 0) {  // Milliliters
+            lv_label_set_text(_label_preset1, "Preset 1 (ml):");
+            lv_label_set_text(_label_preset2, "Preset 2 (ml):");
+            lv_label_set_text(_label_preset3, "Preset 3 (ml):");
+            lv_label_set_text(_label_preset4, "Preset 4 (ml):");
+
+            snprintf(presetStr, sizeof(presetStr), "%d", preset1);
+            lv_textarea_set_text(_textarea_preset1, presetStr);
+            snprintf(presetStr, sizeof(presetStr), "%d", preset2);
+            lv_textarea_set_text(_textarea_preset2, presetStr);
+            snprintf(presetStr, sizeof(presetStr), "%d", preset3);
+            lv_textarea_set_text(_textarea_preset3, presetStr);
+            snprintf(presetStr, sizeof(presetStr), "%d", preset4);
+            lv_textarea_set_text(_textarea_preset4, presetStr);
+        } else {  // Liters
+            lv_label_set_text(_label_preset1, "Preset 1 (L):");
+            lv_label_set_text(_label_preset2, "Preset 2 (L):");
+            lv_label_set_text(_label_preset3, "Preset 3 (L):");
+            lv_label_set_text(_label_preset4, "Preset 4 (L):");
+
+            snprintf(presetStr, sizeof(presetStr), "%.3f", preset1 / 1000.0f);
+            lv_textarea_set_text(_textarea_preset1, presetStr);
+            snprintf(presetStr, sizeof(presetStr), "%.3f", preset2 / 1000.0f);
+            lv_textarea_set_text(_textarea_preset2, presetStr);
+            snprintf(presetStr, sizeof(presetStr), "%.3f", preset3 / 1000.0f);
+            lv_textarea_set_text(_textarea_preset3, presetStr);
+            snprintf(presetStr, sizeof(presetStr), "%.3f", preset4 / 1000.0f);
+            lv_textarea_set_text(_textarea_preset4, presetStr);
+        }
+
         prefs.end();
     }
 }
@@ -610,13 +766,42 @@ void UIManager::configEventHandler(lv_event_t* e) {
     int action = (int)lv_event_get_user_data(e);
 
     if (action == 0) {
-        // Back - save pulses per liter before leaving
+        // Back - save pulses per liter and volume settings before leaving
         const char* pulsesText = lv_textarea_get_text(uiManager._textarea_pulses_per_liter);
         float pulsesPerLiter = atof(pulsesText);
         if (pulsesPerLiter > 0) {
             Preferences prefs;
             if (prefs.begin(PREFS_NAMESPACE, false)) {
                 prefs.putFloat("pulses_per_l", pulsesPerLiter);
+
+                // Save volume settings
+                int unit = lv_dropdown_get_selected(uiManager._dropdown_unit);
+                prefs.putInt("volume_unit", unit);
+
+                // Read preset values and convert to ml for storage
+                const char* preset1_text = lv_textarea_get_text(uiManager._textarea_preset1);
+                const char* preset2_text = lv_textarea_get_text(uiManager._textarea_preset2);
+                const char* preset3_text = lv_textarea_get_text(uiManager._textarea_preset3);
+                const char* preset4_text = lv_textarea_get_text(uiManager._textarea_preset4);
+
+                float preset1_value = atof(preset1_text);
+                float preset2_value = atof(preset2_text);
+                float preset3_value = atof(preset3_text);
+                float preset4_value = atof(preset4_text);
+
+                // Convert to ml if currently in Liters
+                if (unit == 1) {
+                    preset1_value *= 1000;
+                    preset2_value *= 1000;
+                    preset3_value *= 1000;
+                    preset4_value *= 1000;
+                }
+
+                prefs.putInt("preset1_ml", (int)preset1_value);
+                prefs.putInt("preset2_ml", (int)preset2_value);
+                prefs.putInt("preset3_ml", (int)preset3_value);
+                prefs.putInt("preset4_ml", (int)preset4_value);
+
                 prefs.end();
             }
             hardwareControl.setCalibrationFactor(pulsesPerLiter);
@@ -716,6 +901,54 @@ void UIManager::configEventHandler(lv_event_t* e) {
         }
 
         lv_textarea_set_text(uiManager._textarea_ssid, ssid.c_str());
+    } else if (action == 5) {
+        // Unit dropdown changed - convert preset displays and update labels
+        int unit = lv_dropdown_get_selected(uiManager._dropdown_unit);
+
+        // Read current values from textareas and convert
+        const char* preset1_text = lv_textarea_get_text(uiManager._textarea_preset1);
+        const char* preset2_text = lv_textarea_get_text(uiManager._textarea_preset2);
+        const char* preset3_text = lv_textarea_get_text(uiManager._textarea_preset3);
+        const char* preset4_text = lv_textarea_get_text(uiManager._textarea_preset4);
+
+        float preset1 = atof(preset1_text);
+        float preset2 = atof(preset2_text);
+        float preset3 = atof(preset3_text);
+        float preset4 = atof(preset4_text);
+
+        char buf[32];
+
+        if (unit == 0) {
+            // Switched to Milliliters - convert from L to ml and update labels
+            lv_label_set_text(uiManager._label_preset1, "Preset 1 (ml):");
+            lv_label_set_text(uiManager._label_preset2, "Preset 2 (ml):");
+            lv_label_set_text(uiManager._label_preset3, "Preset 3 (ml):");
+            lv_label_set_text(uiManager._label_preset4, "Preset 4 (ml):");
+
+            snprintf(buf, sizeof(buf), "%d", (int)(preset1 * 1000));
+            lv_textarea_set_text(uiManager._textarea_preset1, buf);
+            snprintf(buf, sizeof(buf), "%d", (int)(preset2 * 1000));
+            lv_textarea_set_text(uiManager._textarea_preset2, buf);
+            snprintf(buf, sizeof(buf), "%d", (int)(preset3 * 1000));
+            lv_textarea_set_text(uiManager._textarea_preset3, buf);
+            snprintf(buf, sizeof(buf), "%d", (int)(preset4 * 1000));
+            lv_textarea_set_text(uiManager._textarea_preset4, buf);
+        } else {
+            // Switched to Liters - convert from ml to L and update labels
+            lv_label_set_text(uiManager._label_preset1, "Preset 1 (L):");
+            lv_label_set_text(uiManager._label_preset2, "Preset 2 (L):");
+            lv_label_set_text(uiManager._label_preset3, "Preset 3 (L):");
+            lv_label_set_text(uiManager._label_preset4, "Preset 4 (L):");
+
+            snprintf(buf, sizeof(buf), "%.3f", preset1 / 1000.0f);
+            lv_textarea_set_text(uiManager._textarea_preset1, buf);
+            snprintf(buf, sizeof(buf), "%.3f", preset2 / 1000.0f);
+            lv_textarea_set_text(uiManager._textarea_preset2, buf);
+            snprintf(buf, sizeof(buf), "%.3f", preset3 / 1000.0f);
+            lv_textarea_set_text(uiManager._textarea_preset3, buf);
+            snprintf(buf, sizeof(buf), "%.3f", preset4 / 1000.0f);
+            lv_textarea_set_text(uiManager._textarea_preset4, buf);
+        }
     }
 }
 

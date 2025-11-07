@@ -430,6 +430,38 @@ a.btn {
     box-shadow: 0 -4px 6px rgba(0, 0, 0, 0.1);
 }
 
+/* Warning box */
+.warning-box {
+    background: #fff3cd;
+    border-left: 4px solid #F39C12;
+    padding: 20px;
+    border-radius: 5px;
+    color: #856404;
+}
+
+.warning-box h3 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    color: #856404;
+}
+
+.warning-box ul {
+    margin: 0;
+    padding-left: 20px;
+}
+
+.warning-box li {
+    margin: 8px 0;
+}
+
+/* OTA form styles */
+.ota-form {
+    background: #f8f9fa;
+    padding: 20px;
+    border-radius: 10px;
+    margin-bottom: 20px;
+}
+
 /* Modal styles */
 .modal {
     position: fixed;

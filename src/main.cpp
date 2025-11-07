@@ -10,6 +10,7 @@
 #include "HardwareControl.h"
 #include "UIManager.h"
 #include "WebServer.h"
+#include "OTAManager.h"
 
 // Touch object
 GT911 touch(TOUCH_SDA, TOUCH_SCL, TOUCH_INT, TOUCH_RST, TOUCH_WIDTH, TOUCH_HEIGHT);
@@ -97,18 +98,32 @@ void setup() {
     Serial.println("Starting web server...");
     Serial.flush();
     webServer.begin();
+
+    // Initialize OTA if WiFi is connected
     if (WiFi.status() == WL_CONNECTED) {
         // Get the configured hostname
         Preferences prefs;
         String hostname = DEFAULT_MDNS_HOSTNAME;
+        String otaPassword = "";
         if (prefs.begin(PREFS_NAMESPACE, true)) {
             hostname = prefs.getString("mdns_hostname", DEFAULT_MDNS_HOSTNAME);
+            otaPassword = prefs.getString("ota_password", "");
             prefs.end();
         }
 
         Serial.printf("Web interface available at:\n");
         Serial.printf("  http://%s\n", WiFi.localIP().toString().c_str());
         Serial.printf("  http://%s.local\n", hostname.c_str());
+
+        // Initialize OTA with hostname and optional password
+        Serial.println("Starting OTA service...");
+        if (otaPassword.length() > 0) {
+            otaManager.begin(hostname.c_str(), otaPassword.c_str());
+            Serial.println("OTA enabled with password protection");
+        } else {
+            otaManager.begin(hostname.c_str());
+            Serial.println("OTA enabled (no password)");
+        }
     }
 
     Serial.println("\n=================================");
@@ -118,6 +133,9 @@ void setup() {
 }
 
 void loop() {
+    // Update OTA
+    otaManager.update();
+
     // Update LVGL
     lv_timer_handler();
 

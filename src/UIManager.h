@@ -63,6 +63,7 @@ private:
     lv_obj_t* _textarea_ssid;
     lv_obj_t* _textarea_password;
     lv_obj_t* _textarea_hostname;
+    lv_obj_t* _textarea_ota_password;
     lv_obj_t* _textarea_pulses_per_liter;
     lv_obj_t* _textarea_preset1;
     lv_obj_t* _textarea_preset2;

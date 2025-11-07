@@ -5,6 +5,7 @@
 #include <WiFi.h>
 #include <Preferences.h>
 #include <LittleFS.h>
+#include <Update.h>
 
 // Global instance
 WebServerManager webServer;
@@ -235,6 +236,56 @@ void WebServerManager::begin() {
             request->send(400, "application/json", "{\"success\":false,\"error\":\"Missing unit parameter\"}");
         }
     });
+
+    // OTA Update endpoint
+    _server->on("/update", HTTP_POST,
+        [](AsyncWebServerRequest* request) {
+            // This is called after upload completes
+            bool shouldReboot = !Update.hasError();
+            AsyncWebServerResponse* response = request->beginResponse(200, "text/plain",
+                shouldReboot ? "Update successful! Restarting..." : "Update failed");
+            response->addHeader("Connection", "close");
+            request->send(response);
+
+            if (shouldReboot) {
+                delay(500);
+                ESP.restart();
+            }
+        },
+        [](AsyncWebServerRequest* request, String filename, size_t index, uint8_t* data, size_t len, bool final) {
+            // This is called for each chunk of data uploaded
+            if (!index) {
+                Serial.printf("OTA Update Start: %s\n", filename.c_str());
+
+                // Get update type from query parameter
+                int cmd = U_FLASH; // Default to firmware
+                if (request->hasParam("type")) {
+                    String type = request->getParam("type")->value();
+                    if (type == "filesystem") {
+                        cmd = U_SPIFFS;
+                    }
+                }
+
+                if (!Update.begin(UPDATE_SIZE_UNKNOWN, cmd)) {
+                    Update.printError(Serial);
+                }
+            }
+
+            if (!Update.hasError()) {
+                if (Update.write(data, len) != len) {
+                    Update.printError(Serial);
+                }
+            }
+
+            if (final) {
+                if (Update.end(true)) {
+                    Serial.printf("OTA Update Success: %uB\n", index + len);
+                } else {
+                    Update.printError(Serial);
+                }
+            }
+        }
+    );
 
     // Serve static files from LittleFS with gzip support
     // The server will automatically look for .gz versions of files

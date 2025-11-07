@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OTA Update - Water Dispenser</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>⚡ OTA Update</h1>
+        </div>
+
+        <div class="content">
+            <div class="section">
+                <h2>Upload Firmware or Filesystem</h2>
+                <p class="info-text">Select the type of update and choose your file. The device will restart after a successful update.</p>
+
+                <div class="ota-form">
+                    <div class="toggle-group">
+                        <label class="toggle-option">
+                            <input type="radio" name="updateType" value="firmware" checked onclick="setUpdateType('firmware')">
+                            <span class="toggle-label">Firmware (.bin)</span>
+                        </label>
+                        <label class="toggle-option">
+                            <input type="radio" name="updateType" value="filesystem" onclick="setUpdateType('filesystem')">
+                            <span class="toggle-label">Filesystem (.bin)</span>
+                        </label>
+                    </div>
+
+                    <div class="input-group" style="display: block;">
+                        <label for="updateFile">Select File:</label>
+                        <input type="file" id="updateFile" accept=".bin" style="width: 100%; padding: 15px; margin-top: 10px;">
+                    </div>
+
+                    <div id="uploadProgress" class="progress-container hidden">
+                        <div class="progress-bar" id="progressBar" style="width: 0%">0%</div>
+                    </div>
+
+                    <div id="uploadStatus" class="info-text" style="text-align: center; margin: 20px 0;"></div>
+
+                    <button class="btn btn-success btn-block" onclick="startUpdate()" id="uploadBtn">
+                        Upload and Update
+                    </button>
+                </div>
+            </div>
+
+            <!-- Warning Box -->
+            <div class="section">
+                <div class="warning-box">
+                    <h3>⚠️ Important Notes</h3>
+                    <ul>
+                        <li>Do not power off or disconnect the device during update</li>
+                        <li>The update process may take 2-3 minutes</li>
+                        <li>The device will restart automatically when complete</li>
+                        <li>Make sure you have the correct file type selected</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Navigation -->
+            <div class="section">
+                <a href="/config.html" class="btn btn-secondary btn-block">
+                    ← Back to Configuration
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let updateType = 'firmware';
+
+        function setUpdateType(type) {
+            updateType = type;
+            console.log('Update type set to:', type);
+        }
+
+        async function startUpdate() {
+            const fileInput = document.getElementById('updateFile');
+            const progressContainer = document.getElementById('uploadProgress');
+            const progressBar = document.getElementById('progressBar');
+            const uploadStatus = document.getElementById('uploadStatus');
+            const uploadBtn = document.getElementById('uploadBtn');
+
+            if (!fileInput.files || fileInput.files.length === 0) {
+                alert('Please select a file first');
+                return;
+            }
+
+            const file = fileInput.files[0];
+
+            // Validate file extension
+            if (!file.name.endsWith('.bin')) {
+                alert('Please select a .bin file');
+                return;
+            }
+
+            // Confirm upload
+            if (!confirm(`Are you sure you want to upload ${updateType} update?\\n\\nFile: ${file.name}\\nSize: ${(file.size / 1024).toFixed(2)} KB`)) {
+                return;
+            }
+
+            // Disable button and show progress
+            uploadBtn.disabled = true;
+            uploadBtn.textContent = 'Uploading...';
+            progressContainer.classList.remove('hidden');
+            uploadStatus.textContent = 'Uploading...';
+
+            // Create form data
+            const formData = new FormData();
+            formData.append('update', file);
+
+            try {
+                const xhr = new XMLHttpRequest();
+
+                // Progress event
+                xhr.upload.addEventListener('progress', (e) => {
+                    if (e.lengthComputable) {
+                        const percentComplete = Math.round((e.loaded / e.total) * 100);
+                        progressBar.style.width = percentComplete + '%';
+                        progressBar.textContent = percentComplete + '%';
+                        uploadStatus.textContent = `Uploading: ${percentComplete}%`;
+                    }
+                });
+
+                // Completion events
+                xhr.addEventListener('load', () => {
+                    if (xhr.status === 200) {
+                        progressBar.style.width = '100%';
+                        progressBar.textContent = '100%';
+                        uploadStatus.textContent = 'Update successful! Device is restarting...';
+                        uploadStatus.style.color = '#27AE60';
+
+                        // Wait a few seconds then redirect to home
+                        setTimeout(() => {
+                            uploadStatus.textContent = 'Redirecting to home page...';
+                            setTimeout(() => {
+                                window.location.href = '/';
+                            }, 3000);
+                        }, 5000);
+                    } else {
+                        uploadStatus.textContent = 'Upload failed: ' + xhr.statusText;
+                        uploadStatus.style.color = '#E74C3C';
+                        uploadBtn.disabled = false;
+                        uploadBtn.textContent = 'Upload and Update';
+                    }
+                });
+
+                xhr.addEventListener('error', () => {
+                    uploadStatus.textContent = 'Upload failed: Network error';
+                    uploadStatus.style.color = '#E74C3C';
+                    uploadBtn.disabled = false;
+                    uploadBtn.textContent = 'Upload and Update';
+                });
+
+                // Send request
+                xhr.open('POST', `/update?type=${updateType}`);
+                xhr.send(formData);
+
+            } catch (error) {
+                uploadStatus.textContent = 'Upload failed: ' + error.message;
+                uploadStatus.style.color = '#E74C3C';
+                uploadBtn.disabled = false;
+                uploadBtn.textContent = 'Upload and Update';
+            }
+        }
+    </script>
+</body>
+</html>

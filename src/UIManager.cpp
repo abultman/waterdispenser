@@ -659,6 +659,26 @@ void UIManager::createConfigScreen() {
     lv_obj_add_event_cb(_textarea_hostname, textareaEventHandler, LV_EVENT_FOCUSED, NULL);
     lv_obj_add_event_cb(_textarea_hostname, textareaEventHandler, LV_EVENT_DEFOCUSED, NULL);
 
+    // ========== OTA Security Section ==========
+    lv_obj_t* ota_section_title = lv_label_create(_config_scroll_container);
+    lv_label_set_text(ota_section_title, "OTA Update Security");
+    lv_obj_set_style_text_font(ota_section_title, &lv_font_montserrat_20, 0);
+    lv_obj_set_style_text_color(ota_section_title, lv_color_hex(0x3498DB), 0);
+    lv_obj_set_style_pad_top(ota_section_title, 20, 0);
+
+    lv_obj_t* label_ota_password = lv_label_create(_config_scroll_container);
+    lv_label_set_text(label_ota_password, "OTA Password (optional, leave empty to disable):");
+    lv_obj_set_style_text_color(label_ota_password, lv_color_white(), 0);
+
+    _textarea_ota_password = lv_textarea_create(_config_scroll_container);
+    lv_obj_set_width(_textarea_ota_password, SCREEN_WIDTH - 80);
+    lv_obj_set_height(_textarea_ota_password, 50);
+    lv_textarea_set_one_line(_textarea_ota_password, true);
+    lv_textarea_set_password_mode(_textarea_ota_password, true);
+    lv_textarea_set_placeholder_text(_textarea_ota_password, "Leave empty for no password");
+    lv_obj_add_event_cb(_textarea_ota_password, textareaEventHandler, LV_EVENT_FOCUSED, NULL);
+    lv_obj_add_event_cb(_textarea_ota_password, textareaEventHandler, LV_EVENT_DEFOCUSED, NULL);
+
     // ========== Volume Configuration Section ==========
     lv_obj_t* volume_section_title = lv_label_create(_config_scroll_container);
     lv_label_set_text(volume_section_title, "Volume Configuration");
@@ -788,6 +808,7 @@ void UIManager::createConfigScreen() {
         String ssid = prefs.getString("wifi_ssid", "");
         String password = prefs.getString("wifi_pass", "");
         String hostname = prefs.getString("mdns_hostname", DEFAULT_MDNS_HOSTNAME);
+        String otaPassword = prefs.getString("ota_password", "");
         float pulsesPerLiter = prefs.getFloat("pulses_per_l", DEFAULT_PULSES_PER_LITER);
 
         // Load volume settings
@@ -798,6 +819,7 @@ void UIManager::createConfigScreen() {
             lv_textarea_set_text(_textarea_password, password.c_str());
         }
         lv_textarea_set_text(_textarea_hostname, hostname.c_str());
+        lv_textarea_set_text(_textarea_ota_password, otaPassword.c_str());
 
         char pulsesStr[16];
         snprintf(pulsesStr, sizeof(pulsesStr), "%.2f", pulsesPerLiter);
@@ -818,13 +840,17 @@ void UIManager::configEventHandler(lv_event_t* e) {
     int action = (int)lv_event_get_user_data(e);
 
     if (action == 0) {
-        // Back - save pulses per liter and volume settings before leaving
+        // Back - save pulses per liter, volume settings, and OTA password before leaving
         const char* pulsesText = lv_textarea_get_text(uiManager._textarea_pulses_per_liter);
         float pulsesPerLiter = atof(pulsesText);
         if (pulsesPerLiter > 0) {
             Preferences prefs;
             if (prefs.begin(PREFS_NAMESPACE, false)) {
                 prefs.putFloat("pulses_per_l", pulsesPerLiter);
+
+                // Save OTA password
+                const char* otaPassword = lv_textarea_get_text(uiManager._textarea_ota_password);
+                prefs.putString("ota_password", otaPassword);
 
                 // Save volume settings
                 VolumeUnitType unitType = (VolumeUnitType)lv_dropdown_get_selected(uiManager._dropdown_unit);

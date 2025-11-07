@@ -1,7 +1,89 @@
-// WebSocket connection
+// ============================================================
+// Volume Unit System (similar to C++ VolumeUnit pattern)
+// ============================================================
+
+class VolumeUnit {
+    toDisplay(milliliters) {
+        throw new Error('Must implement toDisplay()');
+    }
+
+    toMilliliters(displayValue) {
+        throw new Error('Must implement toMilliliters()');
+    }
+
+    format(milliliters) {
+        throw new Error('Must implement format()');
+    }
+
+    getSuffix() {
+        throw new Error('Must implement getSuffix()');
+    }
+
+    getType() {
+        throw new Error('Must implement getType()');
+    }
+}
+
+class MillilitersUnit extends VolumeUnit {
+    toDisplay(milliliters) {
+        return milliliters;
+    }
+
+    toMilliliters(displayValue) {
+        return displayValue;
+    }
+
+    format(milliliters) {
+        return milliliters.toFixed(1);
+    }
+
+    getSuffix() {
+        return 'ml';
+    }
+
+    getType() {
+        return 'ml';
+    }
+}
+
+class LitersUnit extends VolumeUnit {
+    toDisplay(milliliters) {
+        return milliliters / 1000.0;
+    }
+
+    toMilliliters(displayValue) {
+        return displayValue * 1000.0;
+    }
+
+    format(milliliters) {
+        return (milliliters / 1000.0).toFixed(3);
+    }
+
+    getSuffix() {
+        return 'L';
+    }
+
+    getType() {
+        return 'l';
+    }
+}
+
+// Factory function to get unit instance
+function getVolumeUnit(type) {
+    if (type === 'l') {
+        return new LitersUnit();
+    }
+    return new MillilitersUnit();
+}
+
+// ============================================================
+// Application State
+// ============================================================
+
 let ws;
 let currentState = 'idle';
-let volumeUnit = 'ml'; // Default unit
+let volumeUnitType = 'ml'; // Current unit type ('ml' or 'l')
+let currentVolumeUnit = getVolumeUnit('ml'); // Current unit instance
 let presetValues = [100, 250, 500, 1000]; // Default presets in ml
 
 // Load volume unit preference from API
@@ -9,16 +91,19 @@ async function loadVolumeUnit() {
     try {
         const response = await fetch('/api/volumeunit');
         const data = await response.json();
-        volumeUnit = data.unit || 'ml';
+        volumeUnitType = data.unit || 'ml';
+        currentVolumeUnit = getVolumeUnit(volumeUnitType);
     } catch (error) {
         console.error('Failed to load volume unit:', error);
-        volumeUnit = 'ml';
+        volumeUnitType = 'ml';
+        currentVolumeUnit = getVolumeUnit('ml');
     }
 }
 
 // Save volume unit preference to API
 async function saveVolumeUnit(unit) {
-    volumeUnit = unit;
+    volumeUnitType = unit;
+    currentVolumeUnit = getVolumeUnit(unit);
     try {
         await apiCall('/api/volumeunit', 'POST', { unit: unit });
     } catch (error) {
@@ -38,20 +123,9 @@ async function loadPresets() {
     }
 }
 
-// Format volume based on user preference
+// Format volume based on current unit (with suffix)
 function formatVolume(ml) {
-    if (volumeUnit === 'l') {
-        return (ml / 1000).toFixed(3) + ' L';
-    }
-    return ml.toFixed(1) + ' ml';
-}
-
-// Convert display value to ml for API
-function convertToMl(value, unit) {
-    if (unit === 'l') {
-        return value * 1000;
-    }
-    return value;
+    return currentVolumeUnit.format(ml) + ' ' + currentVolumeUnit.getSuffix();
 }
 
 // Set volume unit (called from config page)
@@ -70,11 +144,9 @@ async function setVolumeUnit(unit) {
 function updateUnitDisplay() {
     const unitHint = document.getElementById('unitHint');
     if (unitHint) {
-        if (volumeUnit === 'l') {
-            unitHint.textContent = 'Enter amount in liters';
-        } else {
-            unitHint.textContent = 'Enter amount in milliliters';
-        }
+        const suffix = currentVolumeUnit.getSuffix();
+        const fullName = volumeUnitType === 'l' ? 'liters' : 'milliliters';
+        unitHint.textContent = `Enter amount in ${fullName}`;
     }
 }
 
@@ -231,7 +303,7 @@ async function initConfigPage() {
     // Set the correct radio button
     const radios = document.querySelectorAll('input[name="volumeUnit"]');
     radios.forEach(radio => {
-        if (radio.value === volumeUnit) {
+        if (radio.value === volumeUnitType) {
             radio.checked = true;
         }
     });
@@ -248,20 +320,11 @@ function updatePresetInputs() {
     const preset4Input = document.getElementById('preset4');
 
     if (preset1Input && presetValues.length === 4) {
-        // Convert from ml to display unit
-        if (volumeUnit === 'l') {
-            // Convert to liters with 3 decimal places
-            preset1Input.value = (presetValues[0] / 1000).toFixed(3);
-            preset2Input.value = (presetValues[1] / 1000).toFixed(3);
-            preset3Input.value = (presetValues[2] / 1000).toFixed(3);
-            preset4Input.value = (presetValues[3] / 1000).toFixed(3);
-        } else {
-            // Show as milliliters (integers)
-            preset1Input.value = presetValues[0];
-            preset2Input.value = presetValues[1];
-            preset3Input.value = presetValues[2];
-            preset4Input.value = presetValues[3];
-        }
+        // Convert from ml to display unit using VolumeUnit
+        preset1Input.value = currentVolumeUnit.format(presetValues[0]);
+        preset2Input.value = currentVolumeUnit.format(presetValues[1]);
+        preset3Input.value = currentVolumeUnit.format(presetValues[2]);
+        preset4Input.value = currentVolumeUnit.format(presetValues[3]);
     }
 }
 
@@ -288,11 +351,11 @@ async function savePresets() {
         return;
     }
 
-    // Convert to milliliters for storage
-    const preset1_ml = convertToMl(p1, volumeUnit);
-    const preset2_ml = convertToMl(p2, volumeUnit);
-    const preset3_ml = convertToMl(p3, volumeUnit);
-    const preset4_ml = convertToMl(p4, volumeUnit);
+    // Convert to milliliters for storage using VolumeUnit
+    const preset1_ml = currentVolumeUnit.toMilliliters(p1);
+    const preset2_ml = currentVolumeUnit.toMilliliters(p2);
+    const preset3_ml = currentVolumeUnit.toMilliliters(p3);
+    const preset4_ml = currentVolumeUnit.toMilliliters(p4);
 
     // Save via API
     const result = await apiCall('/api/presets', 'POST', {
@@ -343,8 +406,8 @@ async function startCustomAmount() {
 
     const amount = parseFloat(amountInput.value);
     if (amount && amount > 0) {
-        // Always send in ml to the API
-        const amountInMl = convertToMl(amount, volumeUnit);
+        // Convert to ml using VolumeUnit before sending to API
+        const amountInMl = currentVolumeUnit.toMilliliters(amount);
         await startDispensing(amountInMl);
         amountInput.value = '';
     }

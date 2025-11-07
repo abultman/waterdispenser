@@ -59,6 +59,20 @@ void UIManager::showScreen(UIScreen screen) {
     switch (screen) {
         case SCREEN_MAIN:
             lv_scr_load(_screen_main);
+            // Update custom amount label with current unit
+            {
+                Preferences prefs;
+                VolumeUnitType unitType = UNIT_MILLILITERS;
+                if (prefs.begin(PREFS_NAMESPACE, true)) {
+                    unitType = (VolumeUnitType)prefs.getInt("volume_unit", UNIT_MILLILITERS);
+                    prefs.end();
+                }
+                const VolumeUnit* unit = getVolumeUnit(unitType);
+                String customLabel = "Custom Amount (" + String(unit->getSuffix()) + "):";
+                lv_label_set_text(_label_custom_amount, customLabel.c_str());
+                String placeholder = "Enter volume in " + String(unit->getSuffix());
+                lv_textarea_set_placeholder_text(_textarea_custom_amount, placeholder.c_str());
+            }
             break;
         case SCREEN_KEYPAD:
             lv_scr_load(_screen_keypad);
@@ -163,40 +177,94 @@ void UIManager::createMainScreen() {
     lv_obj_set_style_text_font(label4, &lv_font_montserrat_24, 0);
     lv_obj_center(label4);
 
-    // Custom amount button
-    _btn_custom = lv_btn_create(_screen_main);
-    lv_obj_set_size(_btn_custom, 350, 80);
-    lv_obj_align(_btn_custom, LV_ALIGN_CENTER, 0, 80);
-    lv_obj_set_style_bg_color(_btn_custom, lv_color_hex(0x3498DB), 0);
-    lv_obj_add_event_cb(_btn_custom, mainScreenEventHandler, LV_EVENT_CLICKED, (void*)-1);
-    lv_obj_t* label_custom = lv_label_create(_btn_custom);
-    lv_label_set_text(label_custom, "Custom Amount");
-    lv_obj_set_style_text_font(label_custom, &lv_font_montserrat_24, 0);
-    lv_obj_center(label_custom);
-
-    // Settings button
+    // Settings button (top right, gear icon)
     _btn_settings = lv_btn_create(_screen_main);
-    lv_obj_set_size(_btn_settings, 200, 60);
-    lv_obj_align(_btn_settings, LV_ALIGN_BOTTOM_MID, 0, -20);
+    lv_obj_set_size(_btn_settings, 60, 60);
+    lv_obj_align(_btn_settings, LV_ALIGN_TOP_RIGHT, -10, 10);
     lv_obj_set_style_bg_color(_btn_settings, lv_color_hex(0x7F8C8D), 0);
+    lv_obj_set_style_radius(_btn_settings, 30, 0);  // Make it circular
     lv_obj_add_event_cb(_btn_settings, mainScreenEventHandler, LV_EVENT_CLICKED, (void*)-2);
     lv_obj_t* label_settings = lv_label_create(_btn_settings);
-    lv_label_set_text(label_settings, "Settings");
-    lv_obj_set_style_text_font(label_settings, &lv_font_montserrat_20, 0);
+    lv_label_set_text(label_settings, LV_SYMBOL_SETTINGS);
+    lv_obj_set_style_text_font(label_settings, &lv_font_montserrat_24, 0);
     lv_obj_center(label_settings);
+
+    // Custom amount section
+    _label_custom_amount = lv_label_create(_screen_main);
+    String customLabel = "Custom Amount (" + String(unit->getSuffix()) + "):";
+    lv_label_set_text(_label_custom_amount, customLabel.c_str());
+    lv_obj_set_style_text_color(_label_custom_amount, lv_color_white(), 0);
+    lv_obj_set_style_text_font(_label_custom_amount, &lv_font_montserrat_20, 0);
+    lv_obj_align(_label_custom_amount, LV_ALIGN_BOTTOM_LEFT, 20, -120);
+
+    // Custom amount textarea
+    _textarea_custom_amount = lv_textarea_create(_screen_main);
+    lv_obj_set_size(_textarea_custom_amount, 400, 60);
+    lv_obj_align(_textarea_custom_amount, LV_ALIGN_BOTTOM_LEFT, 20, -50);
+    lv_textarea_set_one_line(_textarea_custom_amount, true);
+    String placeholder = "Enter volume in " + String(unit->getSuffix());
+    lv_textarea_set_placeholder_text(_textarea_custom_amount, placeholder.c_str());
+    lv_obj_add_event_cb(_textarea_custom_amount, textareaEventHandler, LV_EVENT_FOCUSED, NULL);
+    lv_obj_add_event_cb(_textarea_custom_amount, textareaEventHandler, LV_EVENT_DEFOCUSED, NULL);
+
+    // Dispense button for custom amount
+    _btn_dispense_custom = lv_btn_create(_screen_main);
+    lv_obj_set_size(_btn_dispense_custom, 150, 60);
+    lv_obj_align(_btn_dispense_custom, LV_ALIGN_BOTTOM_RIGHT, -20, -50);
+    lv_obj_set_style_bg_color(_btn_dispense_custom, lv_color_hex(0x27AE60), 0);
+    lv_obj_add_event_cb(_btn_dispense_custom, mainScreenEventHandler, LV_EVENT_CLICKED, (void*)-1);
+    lv_obj_t* label_dispense = lv_label_create(_btn_dispense_custom);
+    lv_label_set_text(label_dispense, "Dispense");
+    lv_obj_set_style_text_font(label_dispense, &lv_font_montserrat_20, 0);
+    lv_obj_center(label_dispense);
+
+    // Create numeric keyboard (initially hidden)
+    _keyboard_main = lv_keyboard_create(_screen_main);
+    lv_obj_set_size(_keyboard_main, SCREEN_WIDTH, 200);
+    lv_obj_align(_keyboard_main, LV_ALIGN_BOTTOM_MID, 0, 0);
+    lv_keyboard_set_mode(_keyboard_main, LV_KEYBOARD_MODE_NUMBER);  // Set to numeric mode
+    lv_obj_add_flag(_keyboard_main, LV_OBJ_FLAG_HIDDEN);
+
+    // Add event handler for keyboard ready/ok button
+    // lv_obj_add_event_cb(_keyboard_main, [](lv_event_t* e) {
+    //     lv_event_code_t code = lv_event_get_code(e);
+    //     if (code == LV_EVENT_READY) {
+    //         // User pressed OK/checkmark - defocus the textarea to hide keyboard
+    //         lv_obj_t* textarea = lv_keyboard_get_textarea(uiManager._keyboard_main);
+    //         if (textarea) {
+    //             lv_group_focus_next(lv_group_get_default());
+    //             lv_obj_clear_state(textarea, LV_STATE_FOCUSED | LV_STATE_FOCUS_KEY);
+    //         }
+    //     }
+    // }, LV_EVENT_READY, NULL);
 }
 
 void UIManager::mainScreenEventHandler(lv_event_t* e) {
     int amount = (int)lv_event_get_user_data(e);
 
     if (amount == -1) {
-        // Custom amount - show keypad
-        uiManager.showScreen(SCREEN_KEYPAD);
+        // Custom amount - read from textarea and convert to ml
+        const char* amountText = lv_textarea_get_text(uiManager._textarea_custom_amount);
+        float displayValue = atof(amountText);
+        if (displayValue > 0) {
+            // Get current unit and convert to milliliters
+            Preferences prefs;
+            VolumeUnitType unitType = UNIT_MILLILITERS;
+            if (prefs.begin(PREFS_NAMESPACE, true)) {
+                unitType = (VolumeUnitType)prefs.getInt("volume_unit", UNIT_MILLILITERS);
+                prefs.end();
+            }
+            const VolumeUnit* unit = getVolumeUnit(unitType);
+            int customAmount_ml = unit->toMilliliters(displayValue);
+
+            hardwareControl.startDispensing((float)customAmount_ml);
+            uiManager.showScreen(SCREEN_DISPENSING);
+        }
     } else if (amount == -2) {
         // Settings
         uiManager.showScreen(SCREEN_CONFIG);
     } else {
-        // Preset amount - start dispensing
+        // Preset amount - start dispensing (already in ml)
         hardwareControl.startDispensing((float)amount);
         uiManager.showScreen(SCREEN_DISPENSING);
     }
@@ -678,6 +746,20 @@ void UIManager::createConfigScreen() {
     lv_obj_align(_keyboard_config, LV_ALIGN_BOTTOM_MID, 0, 0);
     lv_obj_add_flag(_keyboard_config, LV_OBJ_FLAG_HIDDEN);
 
+    // Add event handler for keyboard ready/ok button
+    lv_obj_add_event_cb(_keyboard_config, [](lv_event_t* e) {
+        lv_event_code_t code = lv_event_get_code(e);
+        if (code == LV_EVENT_READY) {
+            // User pressed OK/checkmark - defocus the textarea to hide keyboard
+            lv_obj_t* textarea = lv_keyboard_get_textarea(uiManager._keyboard_config);
+            Serial.println("Retrieved textarea");
+            if (textarea) {
+                Serial.println("Textarea not null");
+                // lv_obj_clear_state(textarea, LV_STATE_FOCUSED | LV_STATE_FOCUS_KEY);
+            }
+        }
+    }, LV_EVENT_READY, NULL);
+
     // Load saved settings
     Preferences prefs;
     if (prefs.begin(PREFS_NAMESPACE, true)) {
@@ -982,12 +1064,32 @@ void UIManager::textareaEventHandler(lv_event_t* e) {
     lv_event_code_t code = lv_event_get_code(e);
 
     if (code == LV_EVENT_FOCUSED) {
-        // Show keyboard and link it to the focused textarea
-        lv_keyboard_set_textarea(uiManager._keyboard_config, textarea);
-        lv_obj_clear_flag(uiManager._keyboard_config, LV_OBJ_FLAG_HIDDEN);
+        // Determine which keyboard to use based on current screen
+        if (uiManager._currentScreen == SCREEN_MAIN) {
+            // Use main screen keyboard
+            lv_keyboard_set_textarea(uiManager._keyboard_main, textarea);
+            lv_obj_clear_flag(uiManager._keyboard_main, LV_OBJ_FLAG_HIDDEN);
+
+            // Move custom amount section up when keyboard appears (keyboard is 200px tall)
+            // Move textarea and button above keyboard with some spacing
+            lv_obj_align(uiManager._textarea_custom_amount, LV_ALIGN_BOTTOM_LEFT, 20, -220);
+            lv_obj_align(uiManager._btn_dispense_custom, LV_ALIGN_BOTTOM_RIGHT, -20, -220);
+        } else if (uiManager._currentScreen == SCREEN_CONFIG) {
+            // Use config screen keyboard
+            lv_keyboard_set_textarea(uiManager._keyboard_config, textarea);
+            lv_obj_clear_flag(uiManager._keyboard_config, LV_OBJ_FLAG_HIDDEN);
+        }
     } else if (code == LV_EVENT_DEFOCUSED) {
-        // Hide keyboard when textarea loses focus
-        lv_obj_add_flag(uiManager._keyboard_config, LV_OBJ_FLAG_HIDDEN);
+        // Hide appropriate keyboard based on current screen
+        if (uiManager._currentScreen == SCREEN_MAIN) {
+            lv_obj_add_flag(uiManager._keyboard_main, LV_OBJ_FLAG_HIDDEN);
+
+            // Move custom amount section back to original position
+            lv_obj_align(uiManager._textarea_custom_amount, LV_ALIGN_BOTTOM_LEFT, 20, -50);
+            lv_obj_align(uiManager._btn_dispense_custom, LV_ALIGN_BOTTOM_RIGHT, -20, -50);
+        } else if (uiManager._currentScreen == SCREEN_CONFIG) {
+            lv_obj_add_flag(uiManager._keyboard_config, LV_OBJ_FLAG_HIDDEN);
+        }
     }
 }
 

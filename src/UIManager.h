@@ -37,6 +37,10 @@ private:
     lv_obj_t* _btn_custom;
     lv_obj_t* _btn_settings;
     lv_obj_t* _label_status;
+    lv_obj_t* _label_custom_amount;
+    lv_obj_t* _textarea_custom_amount;
+    lv_obj_t* _btn_dispense_custom;
+    lv_obj_t* _keyboard_main;
 
     // Keypad screen elements
     lv_obj_t* _textarea_amount;

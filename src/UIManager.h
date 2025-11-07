@@ -36,7 +36,7 @@ private:
     lv_obj_t* _btn_preset4;
     lv_obj_t* _btn_custom;
     lv_obj_t* _btn_settings;
-    lv_obj_t* _label_status;
+    lv_obj_t* _btn_wifi;
     lv_obj_t* _label_custom_amount;
     lv_obj_t* _textarea_custom_amount;
     lv_obj_t* _btn_dispense_custom;
@@ -107,6 +107,7 @@ private:
     // Helper methods
     void updateDispensingScreen();
     void updateMainStatus();
+    void updateWifiStatus();
     void updatePresetLabelsAndValues(const VolumeUnit* unit);
 };
 

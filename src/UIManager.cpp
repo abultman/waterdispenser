@@ -73,6 +73,8 @@ void UIManager::showScreen(UIScreen screen) {
                 String placeholder = "Enter volume in " + String(unit->getSuffix());
                 lv_textarea_set_placeholder_text(_textarea_custom_amount, placeholder.c_str());
             }
+            // Update WiFi status color
+            updateWifiStatus();
             break;
         case SCREEN_KEYPAD:
             lv_scr_load(_screen_keypad);
@@ -108,13 +110,6 @@ void UIManager::createMainScreen() {
     lv_obj_set_style_text_font(title, &lv_font_montserrat_24, 0);
     lv_obj_set_style_text_color(title, lv_color_white(), 0);
     lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 20);
-
-    // Status label
-    _label_status = lv_label_create(_screen_main);
-    lv_label_set_text(_label_status, "Ready");
-    lv_obj_set_style_text_font(_label_status, &lv_font_montserrat_16, 0);
-    lv_obj_set_style_text_color(_label_status, lv_color_hex(0x95A5A6), 0);
-    lv_obj_align(_label_status, LV_ALIGN_TOP_MID, 0, 70);
 
     // Load preset volumes from preferences
     Preferences prefs;
@@ -176,6 +171,17 @@ void UIManager::createMainScreen() {
     lv_label_set_text(label4, (unit->format(preset4_ml) + " " + unit->getSuffix()).c_str());
     lv_obj_set_style_text_font(label4, &lv_font_montserrat_24, 0);
     lv_obj_center(label4);
+
+    // WiFi button (top right, WiFi icon)
+    _btn_wifi = lv_btn_create(_screen_main);
+    lv_obj_set_size(_btn_wifi, 60, 60);
+    lv_obj_align(_btn_wifi, LV_ALIGN_TOP_RIGHT, -80, 10);
+    lv_obj_set_style_radius(_btn_wifi, 30, 0);  // Make it circular
+    lv_obj_add_event_cb(_btn_wifi, mainScreenEventHandler, LV_EVENT_CLICKED, (void*)-3);
+    lv_obj_t* label_wifi = lv_label_create(_btn_wifi);
+    lv_label_set_text(label_wifi, LV_SYMBOL_WIFI);
+    lv_obj_set_style_text_font(label_wifi, &lv_font_montserrat_24, 0);
+    lv_obj_center(label_wifi);
 
     // Settings button (top right, gear icon)
     _btn_settings = lv_btn_create(_screen_main);
@@ -263,6 +269,16 @@ void UIManager::mainScreenEventHandler(lv_event_t* e) {
     } else if (amount == -2) {
         // Settings
         uiManager.showScreen(SCREEN_CONFIG);
+    } else if (amount == -3) {
+        // WiFi info - show popup with connection details
+        String wifiInfo;
+        if (WiFi.status() == WL_CONNECTED) {
+            wifiInfo = "Connected to:\n" + WiFi.SSID() + "\n\nIP Address:\n" + WiFi.localIP().toString();
+        } else {
+            wifiInfo = "Not connected\n\nGo to Settings to\nconnect to WiFi";
+        }
+        lv_obj_t* mbox = lv_msgbox_create(NULL, "WiFi Status", wifiInfo.c_str(), NULL, true);
+        lv_obj_center(mbox);
     } else {
         // Preset amount - start dispensing (already in ml)
         hardwareControl.startDispensing((float)amount);
@@ -271,12 +287,18 @@ void UIManager::mainScreenEventHandler(lv_event_t* e) {
 }
 
 void UIManager::updateMainStatus() {
-    // Update WiFi status
+    // Update WiFi button color
+    updateWifiStatus();
+}
+
+void UIManager::updateWifiStatus() {
+    // Update WiFi button color based on connection status
     if (WiFi.status() == WL_CONNECTED) {
-        lv_label_set_text_fmt(_label_status, "WiFi: %s | IP: %s",
-                              WiFi.SSID().c_str(), WiFi.localIP().toString().c_str());
+        // Green when connected
+        lv_obj_set_style_bg_color(_btn_wifi, lv_color_hex(0x27AE60), 0);
     } else {
-        lv_label_set_text(_label_status, "WiFi: Not Connected");
+        // Gray when not connected
+        lv_obj_set_style_bg_color(_btn_wifi, lv_color_hex(0x95A5A6), 0);
     }
 }
 

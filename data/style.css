@@ -24,17 +24,61 @@ body {
     background: linear-gradient(135deg, #2C3E50 0%, #34495E 100%);
     color: white;
     padding: 30px;
-    text-align: center;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
 
 .header h1 {
     font-size: 2em;
-    margin-bottom: 10px;
+    margin: 0;
+}
+
+.header-buttons {
+    display: flex;
+    gap: 10px;
+}
+
+.btn-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    border: none;
+    background: #7F8C8D;
+    color: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s;
+    text-decoration: none;
+}
+
+.btn-icon:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+}
+
+.btn-icon .icon {
+    font-size: 24px;
+}
+
+.btn-icon.wifi-connected {
+    background: #27AE60;
+}
+
+.btn-icon.wifi-disconnected {
+    background: #95A5A6;
 }
 
 .status {
     font-size: 0.9em;
     opacity: 0.9;
+}
+
+.status-bar {
+    text-align: center;
+    margin-bottom: 20px;
 }
 
 .content {
@@ -217,7 +261,7 @@ input:focus {
     color: white;
 }
 
-.hidden {
+body .hidden {
     display: none;
 }
 
@@ -386,13 +430,64 @@ a.btn {
     box-shadow: 0 -4px 6px rgba(0, 0, 0, 0.1);
 }
 
+/* Modal styles */
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.modal-content {
+    background: white;
+    border-radius: 20px;
+    padding: 30px;
+    max-width: 500px;
+    width: 90%;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+}
+
+.modal-content h2 {
+    color: #2C3E50;
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.modal-content #wifiModalInfo {
+    background: #f8f9fa;
+    padding: 20px;
+    border-radius: 10px;
+    margin-bottom: 20px;
+    color: #2C3E50;
+    line-height: 1.6;
+}
+
 @media (max-width: 600px) {
     .preset-grid {
         grid-template-columns: repeat(2, 1fr);
     }
 
+    .header {
+        padding: 20px;
+    }
+
     .header h1 {
         font-size: 1.5em;
+    }
+
+    .btn-icon {
+        width: 50px;
+        height: 50px;
+    }
+
+    .btn-icon .icon {
+        font-size: 20px;
     }
 
     .content {

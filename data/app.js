@@ -193,15 +193,20 @@ function updateUI(data) {
     // Note: volumeUnit and presets are loaded separately via API calls
     // They are not included in the WebSocket status updates to improve performance
 
-    // Update WiFi status
-    const wifiStatusEl = document.getElementById('wifiStatus');
-    if (wifiStatusEl) {
+    // Update WiFi button color
+    const wifiBtnEl = document.getElementById('wifiBtn');
+    if (wifiBtnEl) {
         if (data.wifi.connected) {
-            wifiStatusEl.textContent = `WiFi: ${data.wifi.ssid} (${data.wifi.ip})`;
+            wifiBtnEl.classList.add('wifi-connected');
+            wifiBtnEl.classList.remove('wifi-disconnected');
         } else {
-            wifiStatusEl.textContent = 'WiFi: Not connected';
+            wifiBtnEl.classList.add('wifi-disconnected');
+            wifiBtnEl.classList.remove('wifi-connected');
         }
     }
+
+    // Store WiFi data for modal
+    window.wifiData = data.wifi;
 
     // Update state badge (main page)
     const stateBadge = document.getElementById('stateStatus');
@@ -262,8 +267,10 @@ function updateUI(data) {
         calibrationEl.textContent = data.calibration.pulsesPerLiter.toFixed(2) + ' pulses/L';
     }
 
-    // Update config page WiFi info
-    updateConfigPageInfo(data);
+    // Update config page WiFi info if on config page
+    if (window.location.pathname.includes('config.html')) {
+        updateConfigPageInfo(data);
+    }
 }
 
 // Update config page specific elements
@@ -473,4 +480,35 @@ if (customAmountInput) {
     customAmountInput.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') startCustomAmount();
     });
+}
+
+// WiFi Info Modal Functions
+function showWifiInfo() {
+    const modal = document.getElementById('wifiModal');
+    const modalInfo = document.getElementById('wifiModalInfo');
+
+    if (window.wifiData) {
+        if (window.wifiData.connected) {
+            modalInfo.innerHTML = `
+                <p><strong>Status:</strong> Connected</p>
+                <p><strong>Network:</strong> ${window.wifiData.ssid}</p>
+                <p><strong>IP Address:</strong> ${window.wifiData.ip}</p>
+                <p><strong>Signal:</strong> ${window.wifiData.rssi} dBm</p>
+            `;
+        } else {
+            modalInfo.innerHTML = `
+                <p><strong>Status:</strong> Not connected</p>
+                <p>Go to Settings to connect to WiFi</p>
+            `;
+        }
+    } else {
+        modalInfo.innerHTML = '<p>Loading WiFi information...</p>';
+    }
+
+    modal.classList.remove('hidden');
+}
+
+function closeWifiModal() {
+    const modal = document.getElementById('wifiModal');
+    modal.classList.add('hidden');
 }

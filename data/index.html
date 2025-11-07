@@ -10,15 +10,23 @@
     <div class="container">
         <div class="header">
             <h1>💧 Water Dispenser</h1>
-            <div class="status">
-                <span id="wifiStatus">Connecting...</span>
-                <span id="stateStatus" class="status-badge status-idle">IDLE</span>
+            <div class="header-buttons">
+                <button class="btn-icon" id="wifiBtn" onclick="showWifiInfo()" title="WiFi Status">
+                    <span class="icon">📶</span>
+                </button>
+                <a href="/config.html" class="btn-icon" title="Settings">
+                    <span class="icon">⚙️</span>
+                </a>
             </div>
         </div>
 
         <div class="content">
             <!-- Main Control Section -->
             <div class="section" id="mainSection">
+                <div class="status-bar">
+                    <span id="stateStatus" class="status-badge status-idle">IDLE</span>
+                </div>
+
                 <h2>Quick Dispense</h2>
                 <div class="preset-grid">
                     <!-- Preset buttons are dynamically generated -->
@@ -63,13 +71,15 @@
                     <button class="btn btn-danger" onclick="stopDispensing()">STOP</button>
                 </div>
             </div>
+        </div>
+    </div>
 
-            <!-- Navigation Section -->
-            <div class="section">
-                <a href="/config.html" class="btn btn-secondary btn-block">
-                    ⚙️ Configuration
-                </a>
-            </div>
+    <!-- WiFi Info Modal -->
+    <div id="wifiModal" class="modal hidden">
+        <div class="modal-content">
+            <h2>WiFi Status</h2>
+            <div id="wifiModalInfo"></div>
+            <button class="btn btn-primary btn-block" onclick="closeWifiModal()">Close</button>
         </div>
     </div>
 

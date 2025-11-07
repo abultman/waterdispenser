@@ -34,9 +34,6 @@ void WebServerManager::begin() {
     });
     _server->addHandler(_ws);
 
-    // Serve static files from LittleFS
-    _server->serveStatic("/", LittleFS, "/").setDefaultFile("index.html");
-
     _server->on("/api/status", HTTP_GET, [this](AsyncWebServerRequest* request) {
         request->send(200, "application/json", getStatusJSON());
     });
@@ -239,15 +236,23 @@ void WebServerManager::begin() {
         }
     });
 
+    // Serve static files from LittleFS with gzip support
+    // The server will automatically look for .gz versions of files
+    _server->serveStatic("/", LittleFS, "/")
+        .setDefaultFile("index.html")
+        .setCacheControl("max-age=600");  // Cache for 10 minutes
+
     _server->begin();
     Serial.println("Web server started on port 80");
 }
 
 void WebServerManager::update() {
+    if (!_ws) return;
+
     _ws->cleanupClients();
 
-    // Broadcast status every 500ms when clients are connected
-    if (_ws->count() > 0 && millis() - _lastBroadcast > 500) {
+    // Broadcast status every 1000ms (1 second) when clients are connected
+    if (_ws->count() > 0 && millis() - _lastBroadcast > 1000) {
         broadcastStatus();
         _lastBroadcast = millis();
     }
@@ -300,22 +305,8 @@ String WebServerManager::getStatusJSON() {
     // Calibration
     doc["calibration"]["pulsesPerLiter"] = hardwareControl.getCalibrationFactor();
 
-    // Preset values from Preferences
-    Preferences prefs;
-    if (prefs.begin(PREFS_NAMESPACE, true)) {
-        doc["presets"][0] = prefs.getInt("preset1_ml", PRESET_1_ML);
-        doc["presets"][1] = prefs.getInt("preset2_ml", PRESET_2_ML);
-        doc["presets"][2] = prefs.getInt("preset3_ml", PRESET_3_ML);
-        doc["presets"][3] = prefs.getInt("preset4_ml", PRESET_4_ML);
-        doc["volumeUnit"] = prefs.getInt("volume_unit", UNIT_MILLILITERS) == UNIT_LITERS ? "l" : "ml";
-        prefs.end();
-    } else {
-        doc["presets"][0] = PRESET_1_ML;
-        doc["presets"][1] = PRESET_2_ML;
-        doc["presets"][2] = PRESET_3_ML;
-        doc["presets"][3] = PRESET_4_ML;
-        doc["volumeUnit"] = "ml";
-    }
+    // Note: Preset values and volume unit are fetched separately via
+    // /api/presets and /api/volumeunit to avoid blocking on every broadcast
 
     String output;
     serializeJson(doc, output);

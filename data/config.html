@@ -102,6 +102,33 @@
                     </label>
                 </div>
                 <p class="info-text">Choose how volumes are displayed on the main page</p>
+
+                <h3 class="subsection-title">Quick Dispense Presets</h3>
+                <p class="info-text">Configure the four quick dispense buttons (values in current unit)</p>
+
+                <div class="input-group">
+                    <label for="preset1">Preset 1:</label>
+                    <input type="number" id="preset1" placeholder="100" min="1" step="any">
+                </div>
+
+                <div class="input-group">
+                    <label for="preset2">Preset 2:</label>
+                    <input type="number" id="preset2" placeholder="250" min="1" step="any">
+                </div>
+
+                <div class="input-group">
+                    <label for="preset3">Preset 3:</label>
+                    <input type="number" id="preset3" placeholder="500" min="1" step="any">
+                </div>
+
+                <div class="input-group">
+                    <label for="preset4">Preset 4:</label>
+                    <input type="number" id="preset4" placeholder="1000" min="1" step="any">
+                </div>
+
+                <button class="btn btn-success btn-block" onclick="savePresets()">
+                    Save Presets
+                </button>
             </div>
 
             <!-- System Information Section -->

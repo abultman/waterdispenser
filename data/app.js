@@ -55,9 +55,14 @@ function convertToMl(value, unit) {
 }
 
 // Set volume unit (called from config page)
-function setVolumeUnit(unit) {
-    saveVolumeUnit(unit);
+async function setVolumeUnit(unit) {
+    await saveVolumeUnit(unit);
     updateUnitDisplay();
+    // Reload presets to update display with new unit
+    await loadPresets();
+    updatePresetButtons();
+    // Update preset input fields if on config page
+    updatePresetInputs();
     console.log('Volume unit changed to:', unit);
 }
 
@@ -113,17 +118,8 @@ function updatePresetButtons() {
 
 // Update UI with data from server
 function updateUI(data) {
-    // Update volume unit if provided
-    if (data.volumeUnit) {
-        volumeUnit = data.volumeUnit;
-        updateUnitDisplay();
-    }
-
-    // Update preset values if provided
-    if (data.presets && data.presets.length === 4) {
-        presetValues = data.presets;
-        updatePresetButtons();
-    }
+    // Note: volumeUnit and presets are loaded separately via API calls
+    // They are not included in the WebSocket status updates to improve performance
 
     // Update WiFi status
     const wifiStatusEl = document.getElementById('wifiStatus');
@@ -239,6 +235,80 @@ async function initConfigPage() {
             radio.checked = true;
         }
     });
+
+    // Populate preset input fields with current values
+    updatePresetInputs();
+}
+
+// Update preset input fields based on current unit
+function updatePresetInputs() {
+    const preset1Input = document.getElementById('preset1');
+    const preset2Input = document.getElementById('preset2');
+    const preset3Input = document.getElementById('preset3');
+    const preset4Input = document.getElementById('preset4');
+
+    if (preset1Input && presetValues.length === 4) {
+        // Get volume unit instance for conversion
+        const unit = getVolumeUnit(volumeUnit);
+
+        // Convert from ml to display unit
+        preset1Input.value = unit === 'l' ? (presetValues[0] / 1000).toFixed(3) : presetValues[0];
+        preset2Input.value = unit === 'l' ? (presetValues[1] / 1000).toFixed(3) : presetValues[1];
+        preset3Input.value = unit === 'l' ? (presetValues[2] / 1000).toFixed(3) : presetValues[2];
+        preset4Input.value = unit === 'l' ? (presetValues[3] / 1000).toFixed(3) : presetValues[3];
+    }
+}
+
+// Helper to get display value based on unit
+function getVolumeUnit(unit) {
+    return unit;
+}
+
+// Save presets to API
+async function savePresets() {
+    const preset1Input = document.getElementById('preset1');
+    const preset2Input = document.getElementById('preset2');
+    const preset3Input = document.getElementById('preset3');
+    const preset4Input = document.getElementById('preset4');
+
+    if (!preset1Input || !preset2Input || !preset3Input || !preset4Input) {
+        return;
+    }
+
+    // Get values from inputs (in display unit)
+    const p1 = parseFloat(preset1Input.value);
+    const p2 = parseFloat(preset2Input.value);
+    const p3 = parseFloat(preset3Input.value);
+    const p4 = parseFloat(preset4Input.value);
+
+    // Validate
+    if (p1 <= 0 || p2 <= 0 || p3 <= 0 || p4 <= 0) {
+        alert('All preset values must be greater than 0');
+        return;
+    }
+
+    // Convert to milliliters for storage
+    const preset1_ml = convertToMl(p1, volumeUnit);
+    const preset2_ml = convertToMl(p2, volumeUnit);
+    const preset3_ml = convertToMl(p3, volumeUnit);
+    const preset4_ml = convertToMl(p4, volumeUnit);
+
+    // Save via API
+    const result = await apiCall('/api/presets', 'POST', {
+        preset1: preset1_ml,
+        preset2: preset2_ml,
+        preset3: preset3_ml,
+        preset4: preset4_ml
+    });
+
+    if (result.success) {
+        alert('Presets saved successfully!');
+        // Reload presets and update buttons
+        await loadPresets();
+        updatePresetButtons();
+    } else {
+        alert('Failed to save presets: ' + (result.error || 'Unknown error'));
+    }
 }
 
 // API call helper

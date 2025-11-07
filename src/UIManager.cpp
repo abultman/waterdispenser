@@ -768,13 +768,16 @@ void UIManager::createConfigScreen() {
     // Add event handler for keyboard ready/ok button
     lv_obj_add_event_cb(_keyboard_config, [](lv_event_t* e) {
         lv_event_code_t code = lv_event_get_code(e);
+        Serial.printf("Keyboard event %d\n", code);
+
         if (code == LV_EVENT_READY) {
+            Serial.println("Getting text area");
             // User pressed OK/checkmark - defocus the textarea to hide keyboard
             lv_obj_t* textarea = lv_keyboard_get_textarea(uiManager._keyboard_config);
-            Serial.println("Retrieved textarea");
-            if (textarea) {
+            
+            if (textarea) {                
                 Serial.println("Textarea not null");
-                // lv_obj_clear_state(textarea, LV_STATE_FOCUSED | LV_STATE_FOCUS_KEY);
+                lv_obj_clear_state(textarea, LV_STATE_FOCUSED | LV_STATE_FOCUS_KEY);
             }
         }
     }, LV_EVENT_READY, NULL);

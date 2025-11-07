@@ -114,6 +114,7 @@ void setup() {
     Serial.println("\n=================================");
     Serial.println("System Ready!");
     Serial.println("=================================\n");
+    Serial.flush();
 }
 
 void loop() {

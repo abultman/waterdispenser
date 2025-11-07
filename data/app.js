@@ -2,19 +2,40 @@
 let ws;
 let currentState = 'idle';
 let volumeUnit = 'ml'; // Default unit
+let presetValues = [100, 250, 500, 1000]; // Default presets in ml
 
-// Load volume unit preference from localStorage
-function loadVolumeUnit() {
-    const saved = localStorage.getItem('volumeUnit');
-    if (saved) {
-        volumeUnit = saved;
+// Load volume unit preference from API
+async function loadVolumeUnit() {
+    try {
+        const response = await fetch('/api/volumeunit');
+        const data = await response.json();
+        volumeUnit = data.unit || 'ml';
+    } catch (error) {
+        console.error('Failed to load volume unit:', error);
+        volumeUnit = 'ml';
     }
 }
 
-// Save volume unit preference to localStorage
-function saveVolumeUnit(unit) {
+// Save volume unit preference to API
+async function saveVolumeUnit(unit) {
     volumeUnit = unit;
-    localStorage.setItem('volumeUnit', unit);
+    try {
+        await apiCall('/api/volumeunit', 'POST', { unit: unit });
+    } catch (error) {
+        console.error('Failed to save volume unit:', error);
+    }
+}
+
+// Load preset values from API
+async function loadPresets() {
+    try {
+        const response = await fetch('/api/presets');
+        const data = await response.json();
+        presetValues = [data.preset1, data.preset2, data.preset3, data.preset4];
+    } catch (error) {
+        console.error('Failed to load presets:', error);
+        presetValues = [100, 250, 500, 1000];
+    }
 }
 
 // Format volume based on user preference
@@ -75,8 +96,35 @@ function connectWebSocket() {
     };
 }
 
+// Update preset buttons with current values
+function updatePresetButtons() {
+    const presetGrid = document.querySelector('.preset-grid');
+    if (presetGrid && presetValues.length === 4) {
+        presetGrid.innerHTML = '';
+        presetValues.forEach((ml) => {
+            const button = document.createElement('button');
+            button.className = 'btn btn-primary';
+            button.textContent = formatVolume(ml);
+            button.onclick = () => startDispensing(ml);
+            presetGrid.appendChild(button);
+        });
+    }
+}
+
 // Update UI with data from server
 function updateUI(data) {
+    // Update volume unit if provided
+    if (data.volumeUnit) {
+        volumeUnit = data.volumeUnit;
+        updateUnitDisplay();
+    }
+
+    // Update preset values if provided
+    if (data.presets && data.presets.length === 4) {
+        presetValues = data.presets;
+        updatePresetButtons();
+    }
+
     // Update WiFi status
     const wifiStatusEl = document.getElementById('wifiStatus');
     if (wifiStatusEl) {
@@ -180,8 +228,9 @@ function updateConfigPageInfo(data) {
 }
 
 // Initialize config page
-function initConfigPage() {
-    loadVolumeUnit();
+async function initConfigPage() {
+    await loadVolumeUnit();
+    await loadPresets();
 
     // Set the correct radio button
     const radios = document.querySelectorAll('input[name="volumeUnit"]');
@@ -274,9 +323,15 @@ async function saveCalibration() {
 }
 
 // Initialize on page load
-loadVolumeUnit();
-updateUnitDisplay();
-connectWebSocket();
+async function initializePage() {
+    await loadVolumeUnit();
+    await loadPresets();
+    updateUnitDisplay();
+    updatePresetButtons();
+    connectWebSocket();
+}
+
+initializePage();
 
 // Allow Enter key to submit custom amount (if element exists)
 const customAmountInput = document.getElementById('customAmount');

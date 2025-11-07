@@ -1,6 +1,7 @@
 #include "WebServer.h"
 #include "HardwareControl.h"
 #include "config.h"
+#include "VolumeUnit.h"
 #include <WiFi.h>
 #include <Preferences.h>
 #include <LittleFS.h>
@@ -155,6 +156,89 @@ void WebServerManager::begin() {
         }
     });
 
+    _server->on("/api/presets", HTTP_GET, [this](AsyncWebServerRequest* request) {
+        Preferences prefs;
+        StaticJsonDocument<256> doc;
+
+        if (prefs.begin(PREFS_NAMESPACE, true)) {
+            doc["preset1"] = prefs.getInt("preset1_ml", PRESET_1_ML);
+            doc["preset2"] = prefs.getInt("preset2_ml", PRESET_2_ML);
+            doc["preset3"] = prefs.getInt("preset3_ml", PRESET_3_ML);
+            doc["preset4"] = prefs.getInt("preset4_ml", PRESET_4_ML);
+            prefs.end();
+        }
+
+        String output;
+        serializeJson(doc, output);
+        request->send(200, "application/json", output);
+    });
+
+    _server->on("/api/presets", HTTP_POST, [this](AsyncWebServerRequest* request) {
+        if (request->hasParam("preset1", true) && request->hasParam("preset2", true) &&
+            request->hasParam("preset3", true) && request->hasParam("preset4", true)) {
+
+            int preset1 = request->getParam("preset1", true)->value().toInt();
+            int preset2 = request->getParam("preset2", true)->value().toInt();
+            int preset3 = request->getParam("preset3", true)->value().toInt();
+            int preset4 = request->getParam("preset4", true)->value().toInt();
+
+            if (preset1 > 0 && preset2 > 0 && preset3 > 0 && preset4 > 0) {
+                Preferences prefs;
+                if (prefs.begin(PREFS_NAMESPACE, false)) {
+                    prefs.putInt("preset1_ml", preset1);
+                    prefs.putInt("preset2_ml", preset2);
+                    prefs.putInt("preset3_ml", preset3);
+                    prefs.putInt("preset4_ml", preset4);
+                    prefs.end();
+                    request->send(200, "application/json", "{\"success\":true}");
+                } else {
+                    request->send(500, "application/json", "{\"success\":false,\"error\":\"Failed to save presets\"}");
+                }
+            } else {
+                request->send(400, "application/json", "{\"success\":false,\"error\":\"All presets must be greater than 0\"}");
+            }
+        } else {
+            request->send(400, "application/json", "{\"success\":false,\"error\":\"Missing parameters\"}");
+        }
+    });
+
+    _server->on("/api/volumeunit", HTTP_GET, [this](AsyncWebServerRequest* request) {
+        Preferences prefs;
+        int unitType = UNIT_MILLILITERS;
+
+        if (prefs.begin(PREFS_NAMESPACE, true)) {
+            unitType = prefs.getInt("volume_unit", UNIT_MILLILITERS);
+            prefs.end();
+        }
+
+        String unitStr = (unitType == UNIT_LITERS) ? "l" : "ml";
+        String json = "{\"unit\":\"" + unitStr + "\"}";
+        request->send(200, "application/json", json);
+    });
+
+    _server->on("/api/volumeunit", HTTP_POST, [this](AsyncWebServerRequest* request) {
+        if (request->hasParam("unit", true)) {
+            String unit = request->getParam("unit", true)->value();
+
+            if (unit == "ml" || unit == "l") {
+                int unitType = (unit == "l") ? UNIT_LITERS : UNIT_MILLILITERS;
+
+                Preferences prefs;
+                if (prefs.begin(PREFS_NAMESPACE, false)) {
+                    prefs.putInt("volume_unit", unitType);
+                    prefs.end();
+                    request->send(200, "application/json", "{\"success\":true}");
+                } else {
+                    request->send(500, "application/json", "{\"success\":false,\"error\":\"Failed to save unit preference\"}");
+                }
+            } else {
+                request->send(400, "application/json", "{\"success\":false,\"error\":\"Invalid unit (must be 'ml' or 'l')\"}");
+            }
+        } else {
+            request->send(400, "application/json", "{\"success\":false,\"error\":\"Missing unit parameter\"}");
+        }
+    });
+
     _server->begin();
     Serial.println("Web server started on port 80");
 }
@@ -216,11 +300,22 @@ String WebServerManager::getStatusJSON() {
     // Calibration
     doc["calibration"]["pulsesPerLiter"] = hardwareControl.getCalibrationFactor();
 
-    // Preset values
-    doc["presets"][0] = PRESET_1_ML;
-    doc["presets"][1] = PRESET_2_ML;
-    doc["presets"][2] = PRESET_3_ML;
-    doc["presets"][3] = PRESET_4_ML;
+    // Preset values from Preferences
+    Preferences prefs;
+    if (prefs.begin(PREFS_NAMESPACE, true)) {
+        doc["presets"][0] = prefs.getInt("preset1_ml", PRESET_1_ML);
+        doc["presets"][1] = prefs.getInt("preset2_ml", PRESET_2_ML);
+        doc["presets"][2] = prefs.getInt("preset3_ml", PRESET_3_ML);
+        doc["presets"][3] = prefs.getInt("preset4_ml", PRESET_4_ML);
+        doc["volumeUnit"] = prefs.getInt("volume_unit", UNIT_MILLILITERS) == UNIT_LITERS ? "l" : "ml";
+        prefs.end();
+    } else {
+        doc["presets"][0] = PRESET_1_ML;
+        doc["presets"][1] = PRESET_2_ML;
+        doc["presets"][2] = PRESET_3_ML;
+        doc["presets"][3] = PRESET_4_ML;
+        doc["volumeUnit"] = "ml";
+    }
 
     String output;
     serializeJson(doc, output);

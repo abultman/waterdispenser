@@ -248,20 +248,21 @@ function updatePresetInputs() {
     const preset4Input = document.getElementById('preset4');
 
     if (preset1Input && presetValues.length === 4) {
-        // Get volume unit instance for conversion
-        const unit = getVolumeUnit(volumeUnit);
-
         // Convert from ml to display unit
-        preset1Input.value = unit === 'l' ? (presetValues[0] / 1000).toFixed(3) : presetValues[0];
-        preset2Input.value = unit === 'l' ? (presetValues[1] / 1000).toFixed(3) : presetValues[1];
-        preset3Input.value = unit === 'l' ? (presetValues[2] / 1000).toFixed(3) : presetValues[2];
-        preset4Input.value = unit === 'l' ? (presetValues[3] / 1000).toFixed(3) : presetValues[3];
+        if (volumeUnit === 'l') {
+            // Convert to liters with 3 decimal places
+            preset1Input.value = (presetValues[0] / 1000).toFixed(3);
+            preset2Input.value = (presetValues[1] / 1000).toFixed(3);
+            preset3Input.value = (presetValues[2] / 1000).toFixed(3);
+            preset4Input.value = (presetValues[3] / 1000).toFixed(3);
+        } else {
+            // Show as milliliters (integers)
+            preset1Input.value = presetValues[0];
+            preset2Input.value = presetValues[1];
+            preset3Input.value = presetValues[2];
+            preset4Input.value = presetValues[3];
+        }
     }
-}
-
-// Helper to get display value based on unit
-function getVolumeUnit(unit) {
-    return unit;
 }
 
 // Save presets to API

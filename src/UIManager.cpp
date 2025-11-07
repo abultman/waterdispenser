@@ -438,10 +438,10 @@ void UIManager::createDispensingScreen() {
     lv_obj_set_style_text_color(_label_progress, lv_color_white(), 0);
     lv_obj_align(_label_progress, LV_ALIGN_CENTER, 0, 90);
 
-    // Pause button (shown during dispensing)
+    // Pause button (left side, toggles to Resume)
     _btn_pause = lv_btn_create(_screen_dispensing);
-    lv_obj_set_size(_btn_pause, 200, 70);
-    lv_obj_align(_btn_pause, LV_ALIGN_BOTTOM_MID, 0, -30);
+    lv_obj_set_size(_btn_pause, 250, 70);
+    lv_obj_align(_btn_pause, LV_ALIGN_BOTTOM_LEFT, 100, -30);
     lv_obj_set_style_bg_color(_btn_pause, lv_color_hex(0xF39C12), 0);
     lv_obj_add_event_cb(_btn_pause, dispensingEventHandler, LV_EVENT_CLICKED, (void*)1);
     lv_obj_t* label_pause = lv_label_create(_btn_pause);
@@ -449,9 +449,9 @@ void UIManager::createDispensingScreen() {
     lv_obj_set_style_text_font(label_pause, &lv_font_montserrat_24, 0);
     lv_obj_center(label_pause);
 
-    // Resume button (shown when paused)
+    // Resume button (same position as pause, hidden initially)
     _btn_resume = lv_btn_create(_screen_dispensing);
-    lv_obj_set_size(_btn_resume, 200, 70);
+    lv_obj_set_size(_btn_resume, 250, 70);
     lv_obj_align(_btn_resume, LV_ALIGN_BOTTOM_LEFT, 100, -30);
     lv_obj_set_style_bg_color(_btn_resume, lv_color_hex(0x27AE60), 0);
     lv_obj_add_event_cb(_btn_resume, dispensingEventHandler, LV_EVENT_CLICKED, (void*)2);
@@ -461,9 +461,9 @@ void UIManager::createDispensingScreen() {
     lv_obj_center(label_resume);
     lv_obj_add_flag(_btn_resume, LV_OBJ_FLAG_HIDDEN);  // Hidden by default
 
-    // Stop button (shown when paused)
+    // Stop button (right side, always visible)
     _btn_stop = lv_btn_create(_screen_dispensing);
-    lv_obj_set_size(_btn_stop, 200, 70);
+    lv_obj_set_size(_btn_stop, 250, 70);
     lv_obj_align(_btn_stop, LV_ALIGN_BOTTOM_RIGHT, -100, -30);
     lv_obj_set_style_bg_color(_btn_stop, lv_color_hex(0xE74C3C), 0);
     lv_obj_add_event_cb(_btn_stop, dispensingEventHandler, LV_EVENT_CLICKED, (void*)3);
@@ -471,7 +471,6 @@ void UIManager::createDispensingScreen() {
     lv_label_set_text(label_stop, "STOP");
     lv_obj_set_style_text_font(label_stop, &lv_font_montserrat_24, 0);
     lv_obj_center(label_stop);
-    lv_obj_add_flag(_btn_stop, LV_OBJ_FLAG_HIDDEN);  // Hidden by default
 }
 
 void UIManager::dispensingEventHandler(lv_event_t* e) {
@@ -507,19 +506,17 @@ void UIManager::updateDispensingScreen() {
 
     // Update title and button visibility based on state
     if (state == DISPENSING) {
-        // Show only pause button
+        // Show pause button, stop button always visible
         lv_label_set_text(_label_disp_title, "Dispensing...");
         lv_obj_set_style_text_color(_label_disp_title, lv_color_white(), 0);
         lv_obj_clear_flag(_btn_pause, LV_OBJ_FLAG_HIDDEN);
         lv_obj_add_flag(_btn_resume, LV_OBJ_FLAG_HIDDEN);
-        lv_obj_add_flag(_btn_stop, LV_OBJ_FLAG_HIDDEN);
     } else if (state == PAUSED) {
-        // Show resume and stop buttons
+        // Show resume button, stop button always visible
         lv_label_set_text(_label_disp_title, "Paused");
         lv_obj_set_style_text_color(_label_disp_title, lv_color_hex(0xF39C12), 0);
         lv_obj_add_flag(_btn_pause, LV_OBJ_FLAG_HIDDEN);
         lv_obj_clear_flag(_btn_resume, LV_OBJ_FLAG_HIDDEN);
-        lv_obj_clear_flag(_btn_stop, LV_OBJ_FLAG_HIDDEN);
     }
 
     // Check if completed or error
